@@ -8,7 +8,62 @@ import pandas as pd
 import numpy as np
 from pulp import *
 import csv
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Callable, Iterable
+
+
+# Sentinel value for "match all" in filter_keys
+ALL = object()
+
+
+def filter_keys(
+    keys: Iterable[Tuple[str, str, str]],
+    course: str | object = ALL,
+    room: str | object = ALL,
+    time_slot: str | object = ALL,
+    predicate: Optional[Callable[[str, str, str], bool]] = None
+) -> list[Tuple[str, str, str]]:
+    """
+    Filter scheduling keys by exact values or custom predicate.
+
+    Args:
+        keys: Iterable of (course, room, time_slot) tuples to filter (set, list, etc.)
+        course: Exact course name to match, or ALL to match all courses
+        room: Exact room name to match, or ALL to match all rooms
+        time_slot: Exact time slot to match, or ALL to match all time slots
+        predicate: Custom function (course, room, time_slot) -> bool
+                   If provided, overrides exact matching parameters
+
+    Returns:
+        Filtered list of keys matching the criteria
+
+    Examples:
+        # Match all rooms/times for a specific course
+        filter_keys(keys, course='ASEN-2402-001')
+
+        # Match all courses/times for a specific room
+        filter_keys(keys, room='AERO 120')
+
+        # Match specific course and room, all time slots
+        filter_keys(keys, course='ASEN-2402-001', room='AERO 120')
+
+        # Match all keys (no filtering)
+        filter_keys(keys)
+    """
+    # If predicate provided, use it exclusively
+    if predicate is not None:
+        return [k for k in keys if predicate(k[0], k[1], k[2])]
+
+    # Build filter function from exact match criteria
+    def matches(c: str, r: str, t: str) -> bool:
+        if course is not ALL and c != course:
+            return False
+        if room is not ALL and r != room:
+            return False
+        if time_slot is not ALL and t != time_slot:
+            return False
+        return True
+
+    return [k for k in keys if matches(k[0], k[1], k[2])]
 
 
 class InstructorScheduler:
@@ -117,6 +172,7 @@ class InstructorScheduler:
         keys = [(course, room, t) for course in courses for room in rooms for t in time_slots if course_types[course] == slot_types[t]]
         x = LpVariable.dicts("x", keys, cat='Binary')
         key_set = set(keys)  # Convert to set for O(1) lookup in constraints
+        self._keys = key_set  # Store for later filtering
 
         # Course must be taught once
         for course in courses:
@@ -164,7 +220,45 @@ class InstructorScheduler:
         self.schedule = pd.DataFrame(schedule_data)
 
         return self.schedule
-    
+
+    def filter_schedule_keys(
+        self,
+        course: str | object = ALL,
+        room: str | object = ALL,
+        time_slot: str | object = ALL,
+        predicate: Optional[Callable[[str, str, str], bool]] = None
+    ) -> list[Tuple[str, str, str]]:
+        """
+        Filter valid scheduling keys based on criteria.
+
+        Must be called after optimize_schedule() has been called to ensure
+        keys are available.
+
+        Args:
+            course: Exact course name to match, or ALL to match all courses
+            room: Exact room name to match, or ALL to match all rooms
+            time_slot: Exact time slot to match, or ALL to match all time slots
+            predicate: Custom function (course, room, time_slot) -> bool
+
+        Returns:
+            Filtered list of keys from this scheduler's valid key set
+
+        Raises:
+            RuntimeError: If optimize_schedule() hasn't been called yet
+        """
+        if not hasattr(self, '_keys'):
+            raise RuntimeError(
+                "No keys available. Call optimize_schedule() first to generate valid keys."
+            )
+
+        return filter_keys(
+            self._keys,
+            course=course,
+            room=room,
+            time_slot=time_slot,
+            predicate=predicate
+        )
+
     def display_schedule(self):
         """Display the optimized schedule."""
         if self.schedule is not None:

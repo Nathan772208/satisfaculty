@@ -11,6 +11,7 @@ import csv
 from typing import Dict, List, Tuple, Optional, Callable, Iterable
 from visualize_schedule import visualize_schedule
 from utils import time_to_minutes, expand_days
+from objective_base import ObjectiveBase
 
 
 # Sentinel value for "match all" in filter_keys
@@ -132,103 +133,142 @@ class InstructorScheduler:
             print(f"Error loading time slots: {e}")
             return None
 
-    def optimize_schedule(self):
-        """Solve the instructor scheduling problem using integer linear programming."""
+    def setup_problem(self):
+        """
+        Set up the ILP problem with variables and constraints.
+
+        This creates the optimization problem structure without solving it,
+        making variables and constraints available for objective evaluation.
+
+        Should be called before optimize_schedule() or lexicographic_optimize().
+        """
         if self.rooms_df is None or self.courses_df is None:
             print("Error: Room and course data must be loaded first")
-            return None
+            return False
 
         if self.time_slots_df is None:
             print("Error: Time slot data must be loaded first")
-            return None
+            return False
 
         # Create the constraint satisfaction problem
-        prob = LpProblem("Instructor_Scheduling", LpMinimize)
+        self.prob = LpProblem("Instructor_Scheduling", LpMinimize)
 
-        # Extract input parameters
-        courses = list(self.courses_df['Course'])
-        rooms = list(self.rooms_df['Room'])
-        time_slots = list(self.time_slots_df['Slot'])
-        instructors = list(self.courses_df['Instructor'].unique())
+        # Extract input parameters (store as instance variables for objectives)
+        self.courses = list(self.courses_df['Course'])
+        self.rooms = list(self.rooms_df['Room'])
+        self.time_slots = list(self.time_slots_df['Slot'])
+        self.instructors = list(self.courses_df['Instructor'].unique())
 
         # Create dictionaries for enrollments and capacities
-        enrollments = dict(zip(self.courses_df['Course'], self.courses_df['Enrollment']))
-        capacities = dict(zip(self.rooms_df['Room'], self.rooms_df['Capacity']))
+        self.enrollments = dict(zip(self.courses_df['Course'], self.courses_df['Enrollment']))
+        self.capacities = dict(zip(self.rooms_df['Room'], self.rooms_df['Capacity']))
 
         # Create dictionaries for course and time slot types
-        course_types = dict(zip(self.courses_df['Course'], self.courses_df['Type']))
-        slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Type']))
+        self.course_types = dict(zip(self.courses_df['Course'], self.courses_df['Type']))
+        self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Type']))
 
         # Create matrix a; a[(instructor, course)] = 1 if instructor teaches course
-        a = {}
-        for instructor in instructors:
-            for course in courses:
+        self.a = {}
+        for instructor in self.instructors:
+            for course in self.courses:
                 if instructor in self.courses_df[self.courses_df['Course'] == course]['Instructor'].values:
-                    a[(instructor, course)] = 1
+                    self.a[(instructor, course)] = 1
                 else:
-                    a[(instructor, course)] = 0
+                    self.a[(instructor, course)] = 0
 
         # Create binary decision variables using LpVariable.dicts
         # x[(course, room, time)] = 1 if course is assigned to room at time slot
         # Only create variables where course type matches time slot type
-        keys = [(course, room, t) for course in courses for room in rooms for t in time_slots if course_types[course] == slot_types[t]]
-        x = LpVariable.dicts("x", keys, cat='Binary')
-        key_set = set(keys)  # Convert to set for filtering and iteration
+        self.keys = set([
+            (course, room, t)
+            for course in self.courses
+            for room in self.rooms
+            for t in self.time_slots
+            if self.course_types[course] == self.slot_types[t]
+        ])
+        self.x = LpVariable.dicts("x", list(self.keys), cat='Binary')
 
         # Course must be taught once
-        for course in courses:
-            prob += lpSum(x[k] for k in filter_keys(key_set, course=course)) == 1
+        for course in self.courses:
+            self.prob += lpSum(self.x[k] for k in filter_keys(self.keys, course=course)) == 1
 
         # Instructor can only be teaching one course at a time
-        for instructor in instructors:
-            for t in time_slots:
-                prob += lpSum(x[k] * a[(instructor, k[0])] for k in filter_keys(key_set, time_slot=t)) <= 1
+        for instructor in self.instructors:
+            for t in self.time_slots:
+                self.prob += lpSum(
+                    self.x[k] * self.a[(instructor, k[0])]
+                    for k in filter_keys(self.keys, time_slot=t)
+                ) <= 1
 
         # Create dictionaries for time slot start and end times (in minutes)
-        slot_start_minutes = {slot: time_to_minutes(start)
-                             for slot, start in zip(self.time_slots_df['Slot'], self.time_slots_df['Start'])}
-        slot_end_minutes = {slot: time_to_minutes(end)
-                           for slot, end in zip(self.time_slots_df['Slot'], self.time_slots_df['End'])}
-        slot_days = {slot: set(expand_days(days))
-                    for slot, days in zip(self.time_slots_df['Slot'], self.time_slots_df['Days'])}
+        self.slot_start_minutes = {
+            slot: time_to_minutes(start)
+            for slot, start in zip(self.time_slots_df['Slot'], self.time_slots_df['Start'])
+        }
+        self.slot_end_minutes = {
+            slot: time_to_minutes(end)
+            for slot, end in zip(self.time_slots_df['Slot'], self.time_slots_df['End'])
+        }
+        self.slot_days = {
+            slot: set(expand_days(days))
+            for slot, days in zip(self.time_slots_df['Slot'], self.time_slots_df['Days'])
+        }
 
         # Room can only have one course at a time (checking for overlaps with 15-minute buffer)
-        for room in rooms:
-            for t in time_slots:
-                t_start_minutes = slot_start_minutes[t]
-                t_days = slot_days[t]
+        for room in self.rooms:
+            for t in self.time_slots:
+                t_start_minutes = self.slot_start_minutes[t]
+                t_days = self.slot_days[t]
 
                 def overlaps_with_t(course: str, r: str, slot: str) -> bool:
                     if r != room:
                         return False
                     # Check if days overlap
-                    if not slot_days[slot] & t_days:  # No common days
+                    if not self.slot_days[slot] & t_days:  # No common days
                         return False
-                    slot_start = slot_start_minutes[slot]
-                    slot_end = slot_end_minutes[slot]
+                    slot_start = self.slot_start_minutes[slot]
+                    slot_end = self.slot_end_minutes[slot]
                     # Check if slot starts at or before t starts and ends after (t_start - 15 minutes)
                     return slot_start <= t_start_minutes and slot_end > (t_start_minutes - 15)
 
-                prob += lpSum(x[k] for k in filter_keys(key_set, predicate=overlaps_with_t)) <= 1
+                self.prob += lpSum(
+                    self.x[k] for k in filter_keys(self.keys, predicate=overlaps_with_t)
+                ) <= 1
 
         # Room capacity constraints
-        for room in rooms:
-            for t in time_slots:
-                prob += lpSum(x[k] * enrollments[k[0]] for k in filter_keys(key_set, room=room, time_slot=t)) <= capacities[room]
+        for room in self.rooms:
+            for t in self.time_slots:
+                self.prob += lpSum(
+                    self.x[k] * self.enrollments[k[0]]
+                    for k in filter_keys(self.keys, room=room, time_slot=t)
+                ) <= self.capacities[room]
+
+        return True
+
+    def optimize_schedule(self):
+        """Solve the instructor scheduling problem using integer linear programming."""
+        # Set up problem
+        if not self.setup_problem():
+            return None
 
         # Solve the problem
-        prob.solve()
+        self.prob.solve()
 
         # Check if the problem is solved
-        if LpStatus[prob.status] != 'Optimal':
+        if LpStatus[self.prob.status] != 'Optimal':
             print("No solution found")
             self.schedule = None
             return
 
-        # Create the schedule (dataframe with course, room, time slot)
+        # Extract schedule from solution
+        self._extract_schedule()
+        return self.schedule
+
+    def _extract_schedule(self):
+        """Extract schedule from solved problem into a DataFrame."""
         schedule_data = []
-        for k in key_set:
-            if x[k].varValue == 1:
+        for k in self.keys:
+            if self.x[k].varValue == 1:
                 course, room, t = k
                 slot_info = self.time_slots_df[self.time_slots_df['Slot'] == t].iloc[0]
                 schedule_data.append({
@@ -241,6 +281,99 @@ class InstructorScheduler:
                 })
         self.schedule = pd.DataFrame(schedule_data)
 
+    def lexicographic_optimize(self, objectives: List[ObjectiveBase]):
+        """
+        Perform lexicographic optimization with ordered objectives.
+
+        Optimizes objectives in priority order, with each objective's optimal
+        value becoming a constraint for subsequent objectives.
+
+        Args:
+            objectives: Ordered list of ObjectiveBase instances to optimize
+
+        Returns:
+            DataFrame with optimized schedule, or None if no solution found
+
+        Example:
+            objectives = [
+                MinimizeClassesBefore("9:00", instructor="Neogi"),
+                MaximizePreferredRooms(["AERO 120", "AERO 220"]),
+                MinimizeTimeSlotSpread()
+            ]
+            scheduler.lexicographic_optimize(objectives)
+        """
+        # Set up problem
+        if not self.setup_problem():
+            return None
+
+        if not objectives:
+            print("Warning: No objectives specified, using constraint satisfaction only")
+            self.prob.solve()
+            if LpStatus[self.prob.status] == 'Optimal':
+                self._extract_schedule()
+                return self.schedule
+            else:
+                print("No solution found")
+                self.schedule = None
+                return None
+
+        print(f"\n=== Lexicographic Optimization: {len(objectives)} objectives ===\n")
+
+        # Optimize each objective in order
+        for i, objective in enumerate(objectives):
+            print(f"[{i+1}/{len(objectives)}] Optimizing: {objective.name}")
+
+            # Set objective function
+            if objective.sense == 'minimize':
+                self.prob.sense = LpMinimize
+                self.prob.setObjective(objective.evaluate(self))
+            else:
+                self.prob.sense = LpMaximize
+                self.prob.setObjective(objective.evaluate(self))
+
+            # Solve
+            self.prob.solve()
+
+            # Check solution status
+            status = LpStatus[self.prob.status]
+            if status != 'Optimal':
+                print(f"  ✗ No solution found (status: {status})")
+                self.schedule = None
+                return None
+
+            # Get optimal value
+            optimal_value = value(self.prob.objective)
+            print(f"  ✓ Optimal value: {optimal_value:.2f}")
+
+            # Add constraint to lock this objective (with tolerance)
+            # Don't constrain the last objective
+            if i < len(objectives) - 1:
+                tolerance = objective.tolerance
+                if objective.sense == 'minimize':
+                    bound = optimal_value * (1 + tolerance)
+                    self.prob += (
+                        objective.evaluate(self) <= bound,
+                        f"lock_objective_{i}"
+                    )
+                    if tolerance > 0:
+                        print(f"    Constraining: value ≤ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
+                    else:
+                        print(f"    Constraining: value ≤ {bound:.2f}")
+                else:  # maximize
+                    bound = optimal_value * (1 - tolerance)
+                    self.prob += (
+                        objective.evaluate(self) >= bound,
+                        f"lock_objective_{i}"
+                    )
+                    if tolerance > 0:
+                        print(f"    Constraining: value ≥ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
+                    else:
+                        print(f"    Constraining: value ≥ {bound:.2f}")
+            print()
+
+        # Extract final schedule
+        self._extract_schedule()
+        print("=== Optimization complete ===\n")
         return self.schedule
 
     def display_schedule(self):
@@ -258,6 +391,19 @@ class InstructorScheduler:
             print(f"Schedule saved to {filename}")
         else:
             print("No schedule available to save. Please run optimize_schedule() first.")
+
+    def visualize_schedule(self):
+        """
+        Visualize the optimized schedule.
+
+        Creates a visual representation of the schedule showing courses
+        arranged by time and day. Delegates to visualize_schedule module
+        for the actual visualization logic.
+        """
+        if self.schedule is not None:
+            visualize_schedule(self.schedule, self.rooms_df)
+        else:
+            print("No schedule available to visualize. Please run optimize_schedule() or lexicographic_optimize() first.")
 
 def main():
     scheduler = InstructorScheduler()

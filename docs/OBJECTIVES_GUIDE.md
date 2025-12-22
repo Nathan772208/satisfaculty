@@ -27,134 +27,18 @@ scheduler.load_time_slots()
 
 # Define objectives in priority order
 objectives = [
-    MinimizeClassesBefore("9:00", instructor="Neogi"),
-    MaximizePreferredRooms(["AERO 120", "AERO 220"])
+    MinimizeClassesBefore("9:00"),
+    MinimizeClassesBefore("10:00", instructor="Smith"),
+    MinimizeClassesBefore("10:00"),
 ]
 
 # Optimize
 schedule = scheduler.lexicographic_optimize(objectives)
 ```
 
-## Creating Custom Scripts
+## List of Possible Objectives
 
-Each user can create their own script with different objectives:
-
-1. Copy `example_lexicographic.py` to a new file (e.g., `my_schedule.py`)
-2. Modify the `objectives` list to match your priorities
-3. Run your custom script
-
-**Example custom script:**
-
-```python
-#!/usr/bin/env python3
-import sys
-sys.path.append('src')
-
-from scheduler import InstructorScheduler
-from objectives import *
-
-scheduler = InstructorScheduler()
-scheduler.load_rooms()
-scheduler.load_courses()
-scheduler.load_time_slots()
-
-# YOUR custom objectives here
-objectives = [
-    MinimizeClassesAfter("15:00"),  # Avoid late classes
-    PreferTimeSlots(["MWF 10:00-10:50"]),  # Prefer specific times
-]
-
-scheduler.lexicographic_optimize(objectives)
-scheduler.save_schedule('output/my_schedule.csv')
-```
-
-## Available Objectives
-
-### Time-Based Objectives
-
-#### `MinimizeClassesBefore(time, instructor=None, course_type=None)`
-Minimize classes scheduled before a given time.
-
-```python
-# Avoid early classes for everyone
-MinimizeClassesBefore("9:00")
-
-# Specific instructor
-MinimizeClassesBefore("9:00", instructor="Neogi")
-
-# Specific course type
-MinimizeClassesBefore("9:00", course_type="Lab")
-```
-
-#### `MinimizeClassesAfter(time, instructor=None, course_type=None)`
-Minimize classes scheduled after a given time.
-
-```python
-# Avoid late afternoon classes
-MinimizeClassesAfter("16:00")
-
-# For specific instructor
-MinimizeClassesAfter("17:00", instructor="Smith")
-```
-
-#### `PreferTimeSlots(preferred_slots, instructor=None, course_type=None)`
-Maximize assignments to specific time slots.
-
-```python
-# Prefer MWF mornings
-PreferTimeSlots(["MWF 10:00-10:50", "MWF 11:00-11:50"])
-
-# For specific instructor
-PreferTimeSlots(["TTH 14:00-15:15"], instructor="Neogi")
-```
-
-### Room-Based Objectives
-
-#### `MaximizePreferredRooms(preferred_rooms, instructor=None, course_type=None)`
-Maximize use of preferred rooms.
-
-```python
-# Prefer specific rooms
-MaximizePreferredRooms(["AERO 120", "AERO 220"])
-
-# Only for lectures
-MaximizePreferredRooms(["AERO 120"], course_type="Lecture")
-
-# For specific instructor
-MaximizePreferredRooms(["AERO 120"], instructor="Neogi")
-```
-
-#### `MinimizeRoomChanges(instructor=None)`
-Minimize number of different rooms each instructor uses.
-
-```python
-# For all instructors
-MinimizeRoomChanges()
-
-# Specific instructor
-MinimizeRoomChanges(instructor="Neogi")
-```
-
-#### `MinimizeTotalEnrollmentInRooms(rooms, sense='minimize')`
-Control enrollment distribution across rooms.
-
-```python
-# Avoid putting large classes in certain rooms
-MinimizeTotalEnrollmentInRooms(["Small Room A", "Small Room B"])
-
-# Prefer certain rooms for large classes (use maximize)
-MinimizeTotalEnrollmentInRooms(["Large Hall"], sense='maximize')
-```
-
-### Efficiency Objectives
-
-#### `MinimizeTimeSlotSpread()`
-Minimize the total number of distinct time slots used.
-
-```python
-# Consolidate schedule
-MinimizeTimeSlotSpread()
-```
+To see all built-in objectives, refer to the [`objectives` module](../satisfacult/objectives.py).
 
 ## Parameters
 
@@ -188,7 +72,7 @@ objectives = [
 ]
 ```
 
-## Creating Custom Objectives
+## Creating Custom Objectives (Advanced)
 
 To create your own objective, inherit from `ObjectiveBase`:
 

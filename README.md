@@ -20,6 +20,8 @@ pip install git+https://github.com/zsunberg/satisfaculty.git
 from satisfaculty import InstructorScheduler, MinimizeClassesBefore
 
 scheduler = InstructorScheduler()
+
+# example data files are in the example directory of this repo
 scheduler.load_rooms('rooms.csv')
 scheduler.load_courses('courses.csv')
 scheduler.load_time_slots('time_slots.csv')
@@ -35,7 +37,7 @@ This will output a complete schedule:
 
 ## Example
 
-Example data files are available in the [`example/`](https://github.com/zsunberg/satisfaculty/tree/main/example) directory of the repository.
+Example data files and a script are available in the [`example/`](https://github.com/zsunberg/satisfaculty/tree/main/example) directory of the repository.
 
 ## Documentation
 

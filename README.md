@@ -42,6 +42,7 @@ Example data files and a script are available in the [`example/`](https://github
 ## Documentation
 
 - [Objectives Guide](docs/OBJECTIVES_GUIDE.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Acknowledgements
 

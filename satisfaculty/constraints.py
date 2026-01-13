@@ -83,7 +83,7 @@ class RoomCapacity(ConstraintBase):
         for k in scheduler.keys:
             course, room, _ = k
             if scheduler.enrollments[course] > scheduler.capacities[room]:
-                scheduler.prob += (scheduler.x[k] == 0, f"room_capacity_{k}")
+                scheduler.x[k].upBound = 0
                 count += 1
         return count
 

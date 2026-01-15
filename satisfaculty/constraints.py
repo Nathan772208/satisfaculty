@@ -98,6 +98,9 @@ class ForceRooms(ConstraintBase):
 
     def apply(self, scheduler) -> int:
         df = pd.read_csv(self.filename)
+        for col in ['Course', self.column]:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
         count = 0
         for _, row in df.iterrows():
             course = row['Course']
@@ -121,6 +124,9 @@ class ForceTimeSlots(ConstraintBase):
 
     def apply(self, scheduler) -> int:
         df = pd.read_csv(self.filename)
+        for col in ['Course', self.column]:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
         count = 0
         for _, row in df.iterrows():
             course = row['Course']

@@ -1,4 +1,4 @@
-Slot,Days,Start,End,Type
+Slot,Days,Start,End,Slot Type
 MWF-0830,MWF,08:30,09:20,Lecture
 MWF-0935,MWF,09:35,10:25,Lecture
 MWF-1040,MWF,10:40,11:30,Lecture
@@ -7,6 +7,7 @@ MWF-1250,MWF,12:50,13:40,Lecture
 MWF-1355,MWF,13:55,14:45,Lecture
 MWF-1500,MWF,15:00,15:50,Lecture
 MWF-1605,MWF,16:05,16:55,Lecture
+MWF-1710,MWF,17:10,18:00,Lecture
 TTH-0830,TTH,08:30,09:45,Lecture
 TTH-1000,TTH,10:00,11:15,Lecture
 TTH-1130,TTH,11:30,12:45,Lecture

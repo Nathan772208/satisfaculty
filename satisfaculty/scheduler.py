@@ -193,12 +193,12 @@ class InstructorScheduler:
 
     def make_overlap_predicate(self, time_slot: str, room: str | object = ALL, buffer_minutes: int = 15) -> Callable[[str, str, str], bool]:
         """
-        Create a predicate that returns True if a key overlaps with the given time slot.
+        Create a predicate that returns True if *the start time* of the time_slot argument overlaps with the slot given to the predicate.
 
         Args:
-            time_slot: The reference time slot to check overlaps against
+            time_slot: The reference time slot. Overlaps will be checked with respect to the *start time* of this slot.
             room: Room to match, or ALL to match all rooms
-            buffer_minutes: Minutes before slot start to still count as overlap (default 15)
+            buffer_minutes: Minutes before start of time_slot to still count as overlap (default 15)
         """
         t_start = self.slot_start_minutes[time_slot]
         t_days = self.slot_days[time_slot]
@@ -248,7 +248,7 @@ class InstructorScheduler:
 
         # Create dictionaries for course and time slot types
         self.course_slot_types = dict(zip(self.courses_df['Course'], self.courses_df['Slot Type']))
-        self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Type']))
+        self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Slot Type']))
 
         # Create dictionaries for course and room types
         self.course_room_types = dict(zip(self.courses_df['Course'], self.courses_df['Room Type']))

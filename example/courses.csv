@@ -1,4 +1,4 @@
-"Course","Instructor","Enrollment","Type","Force Room","Force Time Slot","Note"
+"Course","Instructor","Enrollment","Slot Type","Force Room","Force Time Slot","Note"
 "DEPT-2402-001","Graham","95","Lecture","","",""
 "DEPT-2402-002","Graham","95","Lecture","","",""
 "DEPT-2502-020","Harris","85","Lecture","","",""

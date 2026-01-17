@@ -99,7 +99,7 @@ class AvoidRoomsForCourseType(ConstraintBase):
     def apply(self, scheduler) -> int:
         count = 0
         for course, room, time_slot in scheduler.keys:
-            if scheduler.course_types[course] == self.course_type and room in self.rooms:
+            if scheduler.course_slot_types[course] == self.course_type and room in self.rooms:
                 scheduler.x[(course, room, time_slot)].upBound = 0
                 count += 1
         return count

@@ -22,7 +22,7 @@ def test_ignore_column_filters_courses():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type,Ignore\n')
+            f.write('Course,Instructor,Enrollment,Slot Type,Ignore\n')
             f.write('Course1,Smith,50,Lecture,\n')
             f.write('Course2,Smith,50,Lecture,TRUE\n')
             f.write('Course3,Jones,50,Lecture,false\n')
@@ -50,7 +50,7 @@ def test_ignore_column_accepts_various_truthy_values():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type,Ignore\n')
+            f.write('Course,Instructor,Enrollment,Slot Type,Ignore\n')
             f.write('Course1,Smith,50,Lecture,TRUE\n')
             f.write('Course2,Smith,50,Lecture,true\n')
             f.write('Course3,Smith,50,Lecture,1\n')
@@ -79,7 +79,7 @@ def test_default_ignore_column_used_when_exists():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type,Ignore\n')
+            f.write('Course,Instructor,Enrollment,Slot Type,Ignore\n')
             f.write('Course1,Smith,50,Lecture,TRUE\n')
             f.write('Course2,Smith,50,Lecture,\n')
 
@@ -104,7 +104,7 @@ def test_ignore_column_disabled_with_none():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type,Ignore\n')
+            f.write('Course,Instructor,Enrollment,Slot Type,Ignore\n')
             f.write('Course1,Smith,50,Lecture,TRUE\n')
             f.write('Course2,Smith,50,Lecture,\n')
 
@@ -128,7 +128,7 @@ def test_ignore_column_missing_is_silently_ignored():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type\n')
+            f.write('Course,Instructor,Enrollment,Slot Type\n')
             f.write('Course1,Smith,50,Lecture\n')
 
         scheduler = InstructorScheduler()
@@ -156,7 +156,7 @@ def test_ignore_makes_infeasible_problem_feasible():
 
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type,Ignore\n')
+            f.write('Course,Instructor,Enrollment,Slot Type,Ignore\n')
             f.write('Course1,Smith,50,Lecture,\n')
             f.write('Course2,Smith,50,Lecture,TRUE\n')  # Ignore this one
 

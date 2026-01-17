@@ -31,7 +31,7 @@ def test_infeasible_two_courses_one_slot():
         # 2 courses (same instructor to keep it simple)
         courses_file = os.path.join(tmpdir, 'courses.csv')
         with open(courses_file, 'w') as f:
-            f.write('Course,Instructor,Enrollment,Type\n')
+            f.write('Course,Instructor,Enrollment,Slot Type\n')
             f.write('Course1,Smith,50,Lecture\n')
             f.write('Course2,Smith,50,Lecture\n')
 

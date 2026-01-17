@@ -136,7 +136,7 @@ class InstructorScheduler:
         try:
             self.courses_df = pd.read_csv(filename)
 
-            strip_columns = ['Course', 'Instructor', 'Type', 'Force Room', 'Force Time Slot']
+            strip_columns = ['Course', 'Instructor', 'Slot Type', 'Force Room', 'Force Time Slot']
             for col in strip_columns:
                 if col in self.courses_df.columns:
                     self.courses_df[col] = self.courses_df[col].apply(
@@ -247,7 +247,7 @@ class InstructorScheduler:
         self.capacities = dict(zip(self.rooms_df['Room'], self.rooms_df['Capacity']))
 
         # Create dictionaries for course and time slot types
-        self.course_types = dict(zip(self.courses_df['Course'], self.courses_df['Type']))
+        self.course_slot_types = dict(zip(self.courses_df['Course'], self.courses_df['Slot Type']))
         self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Type']))
 
         # Create matrix a; a[(instructor, course)] = 1 if instructor teaches course
@@ -267,7 +267,7 @@ class InstructorScheduler:
             for course in self.courses
             for room in self.rooms
             for t in self.time_slots
-            if self.course_types[course] == self.slot_types[t]
+            if self.course_slot_types[course] == self.slot_types[t]
         ])
         self.x = LpVariable.dicts("x", list(self.keys), cat='Binary')
 

@@ -191,31 +191,6 @@ class InstructorScheduler:
             print(f"Error loading time slots: {e}")
             return None
 
-    def make_overlap_predicate(self, time_slot: str, room: str | object = ALL, buffer_minutes: int = 15) -> Callable[[str, str, str], bool]:
-        """
-        Create a predicate that returns True if *the start time* of the time_slot argument overlaps with the slot given to the predicate.
-
-        Args:
-            time_slot: The reference time slot. Overlaps will be checked with respect to the *start time* of this slot.
-            room: Room to match, or ALL to match all rooms
-            buffer_minutes: Minutes before start of time_slot to still count as overlap (default 15)
-        """
-        t_start = self.slot_start_minutes[time_slot]
-        t_days = self.slot_days[time_slot]
-
-        def predicate(course: str, r: str, slot: str) -> bool:
-            if room is not ALL and r != room:
-                return False
-            # Check if days overlap
-            if not self.slot_days[slot] & t_days:
-                return False
-            # Check time overlap
-            slot_start = self.slot_start_minutes[slot]
-            slot_end = self.slot_end_minutes[slot]
-            return slot_start <= t_start and slot_end > (t_start - buffer_minutes)
-
-        return predicate
-
     def setup_problem(self):
         """
         Set up the ILP problem with variables and constraints.
@@ -311,6 +286,23 @@ class InstructorScheduler:
             print(f"Total: {total_constraints} constraints applied")
 
         return True
+
+    def get_day_start_pairs(self) -> set:
+        """Collect all unique (day, start_time) pairs from all time slots."""
+        day_start_pairs = set()
+        for slot in self.time_slots:
+            start_minutes = self.slot_start_minutes[slot]
+            for day in self.slot_days[slot]:
+                day_start_pairs.add((day, start_minutes))
+        return day_start_pairs
+
+    def slot_overlaps(self, slot: str, day: str, start_minutes: int, buffer_minutes: int = 15) -> bool:
+        """Check if a slot overlaps with a given day and start time."""
+        if day not in self.slot_days[slot]:
+            return False
+        slot_start = self.slot_start_minutes[slot]
+        slot_end = self.slot_end_minutes[slot]
+        return slot_start <= start_minutes and slot_end > (start_minutes - buffer_minutes)
 
     def optimize_schedule(self):
         """Solve the instructor scheduling problem using integer linear programming."""

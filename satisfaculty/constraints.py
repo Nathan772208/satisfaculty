@@ -35,17 +35,23 @@ class NoInstructorOverlap(ConstraintBase):
         super().__init__(name="No instructor overlap")
 
     def apply(self, scheduler) -> int:
+        day_start_pairs = scheduler.get_day_start_pairs()
+
         count = 0
         for instructor in scheduler.instructors:
-            for t in scheduler.time_slots:
-                scheduler.prob += (
-                    lpSum(
-                        scheduler.x[k] * scheduler.a[(instructor, k[0])]
-                        for k in filter_keys(scheduler.keys, predicate=scheduler.make_overlap_predicate(t))
-                    ) <= 1,
-                    f"no_instructor_overlap_{instructor}_{t}"
-                )
-                count += 1
+            for day, start_minutes in day_start_pairs:
+                overlapping_keys = [
+                    k for k in scheduler.keys
+                    if scheduler.a[(instructor, k[0])] == 1
+                    and scheduler.slot_overlaps(k[2], day, start_minutes)
+                ]
+
+                if overlapping_keys:
+                    scheduler.prob += (
+                        lpSum(scheduler.x[k] for k in overlapping_keys) <= 1,
+                        f"no_instructor_overlap_{instructor}_{day}_{start_minutes}"
+                    )
+                    count += 1
         return count
 
 
@@ -56,31 +62,16 @@ class NoRoomOverlap(ConstraintBase):
         super().__init__(name="No room overlap")
 
     def apply(self, scheduler) -> int:
-        # Collect all unique (day, start_time) pairs from all time slots
-        day_start_pairs = set()
-        for slot in scheduler.time_slots:
-            start_minutes = scheduler.slot_start_minutes[slot]
-            for day in scheduler.slot_days[slot]:
-                day_start_pairs.add((day, start_minutes))
+        day_start_pairs = scheduler.get_day_start_pairs()
 
         count = 0
-        buffer_minutes = 15
         for room in scheduler.rooms:
             for day, start_minutes in day_start_pairs:
-                # Find all slots that contain this day and overlap this start time
-                overlapping_keys = []
-                for k in scheduler.keys:
-                    course, r, slot = k
-                    if r != room:
-                        continue
-                    # Check if this slot contains the specific day
-                    if day not in scheduler.slot_days[slot]:
-                        continue
-                    # Check time overlap
-                    slot_start = scheduler.slot_start_minutes[slot]
-                    slot_end = scheduler.slot_end_minutes[slot]
-                    if slot_start <= start_minutes and slot_end > (start_minutes - buffer_minutes):
-                        overlapping_keys.append(k)
+                overlapping_keys = [
+                    k for k in scheduler.keys
+                    if k[1] == room
+                    and scheduler.slot_overlaps(k[2], day, start_minutes)
+                ]
 
                 if overlapping_keys:
                     scheduler.prob += (

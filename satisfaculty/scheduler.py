@@ -193,15 +193,19 @@ class InstructorScheduler:
 
     def capacity_check(self) -> list[str]:
         """
-        Check if there are enough (time slot, room) pairs for each slot type.
+        Check for common sources of infeasibility.
 
-        For each slot type, compares the number of courses requiring that slot type
-        against the number of available (time slot, room) pairs. If there are more
-        courses than pairs, the problem is guaranteed to be infeasible.
+        Performs two checks:
+        1. Slot availability: For each (slot type, room type) combination, verifies
+           there are enough (time slot, room) pairs for all courses requiring them.
+        2. Enrollment capacity: For each room type, checks that courses can be
+           accommodated by available room capacities. Works through capacity
+           thresholds from largest to smallest, ensuring courses requiring large
+           rooms don't exceed the available (slot, room) pairs.
 
         Returns:
-            List of warning messages for slot types with insufficient availability.
-            Empty list if all slot types have sufficient (slot, room) pairs.
+            List of warning messages for potential infeasibility issues.
+            Empty list if no issues are detected.
 
         Raises:
             ValueError: If required data (courses, rooms, or time slots) is not loaded.
@@ -215,15 +219,16 @@ class InstructorScheduler:
 
         warnings = []
 
+        # Count time slots per slot type
+        slot_type_counts = self.time_slots_df['Slot Type'].value_counts().to_dict()
+
+        # === Check 1: Slot availability ===
         # Count courses per (slot type, room type) pair
         course_type_counts = (
             self.courses_df.groupby(['Slot Type', 'Room Type'])
             .size()
             .to_dict()
         )
-
-        # Count time slots per slot type
-        slot_type_counts = self.time_slots_df['Slot Type'].value_counts().to_dict()
 
         # Count rooms per room type
         room_type_counts = self.rooms_df['Room Type'].value_counts().to_dict()
@@ -239,6 +244,57 @@ class InstructorScheduler:
                     f"Slot type '{slot_type}' with room type '{room_type}': "
                     f"{course_count} courses but only {pair_count} (time slot, room) "
                     f"pairs available ({slot_count} slots × {room_count} rooms)"
+                )
+                warnings.append(msg)
+
+        # === Check 2: Enrollment capacity ===
+        # For each (slot type, room type), check that large courses can fit
+        for (slot_type, room_type) in course_type_counts.keys():
+            # Get courses of this type, sorted by enrollment descending
+            courses_of_type = self.courses_df[
+                (self.courses_df['Slot Type'] == slot_type) &
+                (self.courses_df['Room Type'] == room_type)
+            ].sort_values('Enrollment', ascending=False)
+
+            # Get rooms of this type, sorted by capacity descending
+            rooms_of_type = self.rooms_df[
+                self.rooms_df['Room Type'] == room_type
+            ].sort_values('Capacity', ascending=False)
+
+            if rooms_of_type.empty:
+                continue
+
+            # Get unique room capacities (descending)
+            capacities = rooms_of_type['Capacity'].unique()
+            num_slots = slot_type_counts.get(slot_type, 0)
+
+            # Check each capacity threshold
+            for capacity in capacities:
+                # Count courses that require at least this capacity
+                courses_needing = (courses_of_type['Enrollment'] > capacity).sum()
+                # This is actually courses that are LARGER than this capacity,
+                # meaning they need a room bigger than this one
+
+                # Count rooms with capacity > this threshold
+                rooms_available = (rooms_of_type['Capacity'] > capacity).sum()
+                pairs_available = rooms_available * num_slots
+
+                if courses_needing > pairs_available:
+                    msg = (
+                        f"Slot type '{slot_type}', room type '{room_type}': "
+                        f"{courses_needing} courses with enrollment > {capacity} but only "
+                        f"{pairs_available} (slot, room) pairs with capacity > {capacity} "
+                        f"({rooms_available} rooms × {num_slots} slots)"
+                    )
+                    warnings.append(msg)
+
+            # Also check if any course exceeds the largest room
+            max_capacity = capacities[0]
+            courses_too_large = courses_of_type[courses_of_type['Enrollment'] > max_capacity]
+            for _, course in courses_too_large.iterrows():
+                msg = (
+                    f"Course '{course['Course']}' has enrollment {course['Enrollment']} "
+                    f"but largest '{room_type}' room has capacity {max_capacity}"
                 )
                 warnings.append(msg)
 

@@ -108,26 +108,20 @@ class AvoidRoomsForCourseType(ConstraintBase):
 class ForceRooms(ConstraintBase):
     """Forces specific courses to be assigned to specific rooms."""
 
-    def __init__(self, filename: str = 'courses.csv', column: str = 'Force Room', ignore_column: str = 'Ignore'):
-        self.filename = filename
+    def __init__(self, column: str = 'Force Room'):
         self.column = column
-        self.ignore_column = ignore_column
         super().__init__(name=f"Force rooms ({column})")
 
     def apply(self, scheduler) -> int:
-        df = pd.read_csv(self.filename)
-        for col in ['Course', self.column, self.ignore_column]:
-            if col in df.columns:
-                df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+        df = scheduler.courses_df
+        if self.column not in df.columns:
+            return 0
         count = 0
         for _, row in df.iterrows():
-            if self.ignore_column in row and pd.notna(row[self.ignore_column]):
-                ignore_val = str(row[self.ignore_column]).strip().lower()
-                if ignore_val in ('true', '1', 'yes'):
-                    continue
             course = row['Course']
             forced_room = row[self.column]
-            if pd.notna(forced_room) and forced_room != '':
+            if pd.notna(forced_room) and str(forced_room).strip() != '':
+                forced_room = str(forced_room).strip()
                 scheduler.prob += (
                     lpSum(scheduler.x[k] for k in filter_keys(scheduler.keys, course=course, room=forced_room)) == 1,
                     f"force_room_{course}"
@@ -139,26 +133,20 @@ class ForceRooms(ConstraintBase):
 class ForceTimeSlots(ConstraintBase):
     """Forces specific courses to be assigned to specific time slots."""
 
-    def __init__(self, filename: str = 'courses.csv', column: str = 'Force Time Slot', ignore_column: str = 'Ignore'):
-        self.filename = filename
+    def __init__(self, column: str = 'Force Time Slot'):
         self.column = column
-        self.ignore_column = ignore_column
         super().__init__(name=f"Force time slots ({column})")
 
     def apply(self, scheduler) -> int:
-        df = pd.read_csv(self.filename)
-        for col in ['Course', self.column, self.ignore_column]:
-            if col in df.columns:
-                df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+        df = scheduler.courses_df
+        if self.column not in df.columns:
+            return 0
         count = 0
         for _, row in df.iterrows():
-            if self.ignore_column in row and pd.notna(row[self.ignore_column]):
-                ignore_val = str(row[self.ignore_column]).strip().lower()
-                if ignore_val in ('true', '1', 'yes'):
-                    continue
             course = row['Course']
             forced_slot = row[self.column]
-            if pd.notna(forced_slot) and forced_slot != '':
+            if pd.notna(forced_slot) and str(forced_slot).strip() != '':
+                forced_slot = str(forced_slot).strip()
                 scheduler.prob += (
                     lpSum(scheduler.x[k] for k in filter_keys(scheduler.keys, course=course, time_slot=forced_slot)) == 1,
                     f"force_time_slot_{course}"

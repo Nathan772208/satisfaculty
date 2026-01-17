@@ -136,7 +136,7 @@ class InstructorScheduler:
         try:
             self.courses_df = pd.read_csv(filename)
 
-            strip_columns = ['Course', 'Instructor', 'Slot Type', 'Force Room', 'Force Time Slot']
+            strip_columns = ['Course', 'Instructor', 'Slot Type', 'Room Type', 'Force Room', 'Force Time Slot']
             for col in strip_columns:
                 if col in self.courses_df.columns:
                     self.courses_df[col] = self.courses_df[col].apply(
@@ -250,6 +250,10 @@ class InstructorScheduler:
         self.course_slot_types = dict(zip(self.courses_df['Course'], self.courses_df['Slot Type']))
         self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Type']))
 
+        # Create dictionaries for course and room types
+        self.course_room_types = dict(zip(self.courses_df['Course'], self.courses_df['Room Type']))
+        self.room_types = dict(zip(self.rooms_df['Room'], self.rooms_df['Room Type']))
+
         # Create matrix a; a[(instructor, course)] = 1 if instructor teaches course
         self.a = {}
         for instructor in self.instructors:
@@ -261,13 +265,15 @@ class InstructorScheduler:
 
         # Create binary decision variables using LpVariable.dicts
         # x[(course, room, time)] = 1 if course is assigned to room at time slot
-        # Only create variables where course type matches time slot type
+        # Only create variables where course slot type matches time slot type
+        # and course room type matches room type
         self.keys = set([
             (course, room, t)
             for course in self.courses
             for room in self.rooms
             for t in self.time_slots
             if self.course_slot_types[course] == self.slot_types[t]
+            and self.course_room_types[course] == self.room_types[room]
         ])
         self.x = LpVariable.dicts("x", list(self.keys), cat='Binary')
 

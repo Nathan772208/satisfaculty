@@ -191,6 +191,59 @@ class InstructorScheduler:
             print(f"Error loading time slots: {e}")
             return None
 
+    def capacity_check(self) -> list[str]:
+        """
+        Check if there are enough (time slot, room) pairs for each slot type.
+
+        For each slot type, compares the number of courses requiring that slot type
+        against the number of available (time slot, room) pairs. If there are more
+        courses than pairs, the problem is guaranteed to be infeasible.
+
+        Returns:
+            List of warning messages for slot types with insufficient availability.
+            Empty list if all slot types have sufficient (slot, room) pairs.
+
+        Raises:
+            ValueError: If required data (courses, rooms, or time slots) is not loaded.
+        """
+        if self.courses_df is None:
+            raise ValueError("Course data must be loaded first")
+        if self.rooms_df is None:
+            raise ValueError("Room data must be loaded first")
+        if self.time_slots_df is None:
+            raise ValueError("Time slot data must be loaded first")
+
+        warnings = []
+
+        # Count courses per (slot type, room type) pair
+        course_type_counts = (
+            self.courses_df.groupby(['Slot Type', 'Room Type'])
+            .size()
+            .to_dict()
+        )
+
+        # Count time slots per slot type
+        slot_type_counts = self.time_slots_df['Slot Type'].value_counts().to_dict()
+
+        # Count rooms per room type
+        room_type_counts = self.rooms_df['Room Type'].value_counts().to_dict()
+
+        # Check each (slot type, room type) combination that has courses
+        for (slot_type, room_type), course_count in course_type_counts.items():
+            slot_count = slot_type_counts.get(slot_type, 0)
+            room_count = room_type_counts.get(room_type, 0)
+            pair_count = slot_count * room_count
+
+            if course_count > pair_count:
+                msg = (
+                    f"Slot type '{slot_type}' with room type '{room_type}': "
+                    f"{course_count} courses but only {pair_count} (time slot, room) "
+                    f"pairs available ({slot_count} slots × {room_count} rooms)"
+                )
+                warnings.append(msg)
+
+        return warnings
+
     def setup_problem(self):
         """
         Set up the ILP problem with variables and constraints.
@@ -207,6 +260,11 @@ class InstructorScheduler:
         if self.time_slots_df is None:
             print("Error: Time slot data must be loaded first")
             return False
+
+        # Run capacity check
+        warnings = self.capacity_check()
+        for warning in warnings:
+            print(f"Warning: {warning}")
 
         # Create the constraint satisfaction problem
         self.prob = LpProblem("Instructor_Scheduling", LpMinimize)

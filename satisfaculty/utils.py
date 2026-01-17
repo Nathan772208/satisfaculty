@@ -18,11 +18,15 @@ def minutes_to_time(minutes):
 
 
 def expand_days(days_str):
-    """Expand day codes to individual days. MWF -> [M, W, F], TTH -> [T, TH]"""
-    if days_str == "MWF":
-        return ['M', 'W', 'F']
-    elif days_str == "TTH":
-        return ['T', 'TH']
-    else:
-        # Single day (M, T, W, TH, F)
-        return [days_str]
+    """Expand day codes to individual days. e.g. MWF -> [M, W, F], TTH -> [T, TH]"""
+    result = []
+    i = 0
+    while i < len(days_str):
+        # Check for TH (Thursday) first since it's two characters
+        if i + 1 < len(days_str) and days_str[i:i+2] == 'TH':
+            result.append('TH')
+            i += 2
+        else:
+            result.append(days_str[i])
+            i += 1
+    return result

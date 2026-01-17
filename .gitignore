@@ -24,3 +24,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .venv/
+
+# Docs build
+docs/_build/
+
+# Personal
+journal.txt

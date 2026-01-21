@@ -6,7 +6,7 @@ Tests for time overlap constraints.
 import os
 
 from satisfaculty import scheduler
-from satisfaculty.constraints import AssignAllCourses, NoRoomOverlap, NoInstructorOverlap
+from satisfaculty.constraints import AssignAllCourses, NoRoomOverlap, NoInstructorOverlap, NoCourseOverlap
 
 def test_time_overlap():
     """Test that room overlap constraints work correctly with different day patterns."""
@@ -138,10 +138,66 @@ def test_instructor_overlap_different_days():
     result = sched.lexicographic_optimize([])
     assert result is not None, "Expected a valid solution - same time on different days is allowed"
 
+def test_course_overlap():
+    """Test that NoCourseOverlap prevents specified courses from overlapping."""
+    import tempfile
+    from satisfaculty import MinimizeClassesBefore
+
+    sched = scheduler.InstructorScheduler()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Two non-overlapping time slots
+        time_slots_file = os.path.join(tmpdir, 'time_slots.csv')
+        with open(time_slots_file, 'w') as f:
+            f.write('Slot,Days,Start,End,Slot Type\n')
+            f.write('MWF-0800,MWF,08:00,08:50,Lecture\n')
+            f.write('MWF-1000,MWF,10:00,10:50,Lecture\n')
+
+        # Three courses with different instructors
+        courses_file = os.path.join(tmpdir, 'courses.csv')
+        with open(courses_file, 'w') as f:
+            f.write('Course,Instructor,Enrollment,Slot Type,Room Type\n')
+            f.write('Course1,Smith,30,Lecture,Lecture\n')
+            f.write('Course2,Jones,30,Lecture,Lecture\n')
+            f.write('Course3,Brown,30,Lecture,Lecture\n')
+
+        # Three rooms so room overlap isn't the constraint
+        rooms_file = os.path.join(tmpdir, 'rooms.csv')
+        with open(rooms_file, 'w') as f:
+            f.write('Room,Capacity,Room Type\n')
+            f.write('Room1,50,Lecture\n')
+            f.write('Room2,50,Lecture\n')
+            f.write('Room3,50,Lecture\n')
+
+        sched.load_time_slots(time_slots_file)
+        sched.load_courses(courses_file)
+        sched.load_rooms(rooms_file)
+
+    # Prevent Course1 and Course2 from overlapping (Course3 is not constrained)
+    sched.add_constraints([
+        AssignAllCourses(),
+        NoInstructorOverlap(),
+        NoRoomOverlap(),
+        NoCourseOverlap(['Course1', 'Course2'])
+    ])
+
+    # Use MinimizeClassesBefore to push courses to the later slot (10:00).
+    # Without the NoCourseOverlap constraint, all courses would be scheduled
+    # at 10:00. The constraint forces Course1 and Course2 to different times.
+    result = sched.lexicographic_optimize([MinimizeClassesBefore("9:00")])
+    assert result is not None, "Expected a valid solution"
+
+    # Verify Course1 and Course2 are scheduled at different times
+    course1_start = result[result['Course'] == 'Course1']['Start'].values[0]
+    course2_start = result[result['Course'] == 'Course2']['Start'].values[0]
+    assert course1_start != course2_start, "Constrained courses should be at different times"
+
+
 def run_all_tests():
     test_time_overlap()
     test_instructor_overlap()
     test_instructor_overlap_different_days()
+    test_course_overlap()
 
     print('\n' + '='*50)
     print('All overlap tests passed!')

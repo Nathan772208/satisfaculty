@@ -13,14 +13,20 @@ scheduler.load_rooms('rooms.csv')
 scheduler.load_courses('courses.csv')
 scheduler.load_time_slots('time_slots.csv')
 
+# Find all 2000-level and 3000-level courses
+courses_2000 = [c for c in scheduler.courses_df['Course'] if c.startswith('DEPT-2')]
+courses_3000 = [c for c in scheduler.courses_df['Course'] if c.startswith('DEPT-3')]
+
 # Add constraints (required for a valid schedule)
 scheduler.add_constraints([
     AssignAllCourses(),
-    # NoInstructorOverlap(),
+    NoInstructorOverlap(),
     NoRoomOverlap(),
-    # RoomCapacity(),
+    RoomCapacity(),
     ForceRooms(),
     ForceTimeSlots(),
+    NoCourseOverlap(courses_2000, name="2000-level"),
+    NoCourseOverlap(courses_3000, name="3000-level"),
 ])
 
 # Define lexicographic optimization objectives (in priority order)

@@ -163,3 +163,35 @@ class ForceTimeSlots(ConstraintBase):
                 )
                 count += 1
         return count
+
+
+class NoCourseOverlap(ConstraintBase):
+    """Prevents a specified list of courses from overlapping in time."""
+
+    _instance_count = 0
+
+    def __init__(self, courses: list[str], name: str | None = None):
+        self.courses = set(courses)
+        NoCourseOverlap._instance_count += 1
+        self._id = NoCourseOverlap._instance_count
+        display_name = name if name else ', '.join(courses)
+        super().__init__(name=f"No overlap for courses ({display_name})")
+
+    def apply(self, scheduler) -> int:
+        day_start_pairs = scheduler.get_day_start_pairs()
+
+        count = 0
+        for day, start_minutes in day_start_pairs:
+            overlapping_keys = [
+                k for k in scheduler.keys
+                if k[0] in self.courses
+                and scheduler.slot_overlaps(k[2], day, start_minutes)
+            ]
+
+            if overlapping_keys:
+                scheduler.prob += (
+                    lpSum(scheduler.x[k] for k in overlapping_keys) <= 1,
+                    f"no_course_overlap_{self._id}_{day}_{start_minutes}"
+                )
+                count += 1
+        return count

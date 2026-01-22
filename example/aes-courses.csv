@@ -1,0 +1,83 @@
+Course,Instructor,Enrollment,Room Type,Slot Type,Ignore,Force Room,Force Time Slot,Note
+ASEN-1009-001,Schaub,60,Lecture,50x1,,,F-1040-Lec,Lecture-50 x1 A larger classroom is likely needed since this course is combined with department seminars
+ASEN-1030-010,Chu,75,Lecture,50x2,,,,Lecture-50 x2
+ASEN-1030-011,Chu,75,Lab,110x1,,AERO N100,,
+ASEN-1030-020,Hodgkinson,75,Lecture,50x2,,,,Lecture-50 x2
+ASEN-1030-012,Hodgkinson,75,Lab,110x1,,AERO N100,,
+ASEN-1403-001,Rhode,75,Lecture,150xAny,,,,"Sections must be held on the same day, SEEN N136 option?"
+ASEN-1403-002,Rhode,75,Lecture,150xAny,,,,"Sections must be held on the same day, SEEN N136 option?"
+ASEN-1969-001,Sobhani,100,Lecture,150xAny,,MAIN 120,,Scheduled on Main MUEN; not offered in Fall before - no classroom precedent
+ASEN-2401-001,Comandur,160,Lecture,150xAny,,MAIN 120,,
+ASEN-2401-002,Glusman,160,Lecture,150xAny,,MAIN 120,,
+ASEN-2402-001,Glusman,120,Lecture,150xAny,,MAIN 120,,
+ASEN-2402-002,Glusman,60,Lecture,150xAny,,MAIN 120,,May remove this extra section
+ASEN-2403-001,Ghobadi-Far,120,Lecture,150xAny,,,,
+ASEN-2403-002,Ghobadi-Far,120,Lecture,150xAny,,,,No second section for Fall?
+ASEN-2501-010,Marshall,180,Lecture,50x2,,,,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-2501-011,Marshall,90,Lab,110x1,,AERO 141,,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-2501-012,Marshall,90,Lab,110x1,,AERO 141,,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-2502-010,Mah ,180,Lecture,50x2,,,,Double check conlicts for Hoke
+ASEN-2502-011,Mah,90,Lab,110x1,,AERO 141,,
+ASEN-2502-012,Hoke,90,Lab,110x1,,AERO 141,,
+ASEN-2519-001,Muldrow,30,Lecture,150xAny,,,,Chris leaving; alt fac instructor?
+ASEN-3036-001,Sobhani,80,Lecture,150xAny,,MAIN 120,,Only offering in Spring?
+ASEN-3046-001,Stanford-McIntyre,150,Lecture,150xAny,,MAIN 120,,No future offerings listed for 26-27 AY
+ASEN-3401-001,Shakiba,180,Lecture,150xAny,,,,
+ASEN-3402-001,Le Moine,180,Lecture,150xAny,,,,
+ASEN-3403-001,Farnsworth,180,Lecture,150xAny,,,,
+ASEN-3404-001,Scheeres,180,Lecture,150xAny,,,,
+ASEN-3404-002,Instructor,180,Lecture,150xAny,,,,Will become 3406 section in the spring
+ASEN-3405-001,Arya,75,Lecture,150xAny,,,,
+ASEN-3501-010,Hodgkinson,190,Lecture,50x1,,,,Lecture-50x1
+ASEN-3501-011,TA1,65,Lab,110x2,,AERO 141,,Lab-110x2
+ASEN-3501-012,TA1,65,Lab,110x2,,AERO 141,,Lab-110x2
+ASEN-3501-013,TA1,60,Lab,110x2,,AERO 141,,Lab-110x2
+ASEN-3502-010,Sunberg,190,Lecture,50x2,,,,Lecture-50x2
+ASEN-3502-011,TA2,65,Lab,110x1,,,,Lab-110x1
+ASEN-3502-012,TA2,65,Lab,110x1,,,,Lab-110x1
+ASEN-3502-013,TA2,60,Lab,110x1,,,,Lab-110x1
+ASEN-3503-010,Morton,190,Lecture,50x2,,,,Lecture-50x2
+ASEN-3503-011,TA3,95,Lab,110x1,,AERO 141,,Lab-110x1
+ASEN-3503-012,TA3,95,Lab,110x1,,AERO 141,,Lab-110x1
+ASEN-3503-013,TA3,60,Lab,110x1,,AERO 141,,Lab-110x1
+ASEN-4013-001,Ali,175,Lecture,150xAny,,,,
+ASEN-4018-010,Wingate,380,Lecture,150xAny,yes,,,Remote lectures?
+ASEN-4018-011,Nabity,55,Lab,110x2,,,,"Lab-110 x2, Can the algorithm address deconflicting multiple faculty for two separate lab-time options? Hayman/Nabity, Neogi/Li,  Rafi, Sternovsky/Wingate, Holinger/Matsuo, Hoke, Comandur"
+ASEN-4018-012,Neogi,55,Lab,110x2,,,,
+ASEN-4018-013,Rafi,55,Lab,110x2,,,,"Lab-110 x2, Breaking out labs like last year? How to do this with the algorithm"
+ASEN-4018-014,Sternovsky,55,Lab,110x2,,,,
+ASEN-4018-015,Holizinger,55,Lab,110x2,,,,
+ASEN-4018-016,Hoke,55,Lab,110x2,,,,
+ASEN-4018-017,Comandur,55,Lab,110x2,,,,
+ASEN-4057-010,Le Moine,40,Lecture,50x2,,,,"Lecture - 50 x2, B2B lecture lab, two days a week at 50 minutes each section"
+ASEN-4057-011,Le Moine,40,Lab,110x1,,, ,"Lab-50 x2, B2B lecture lab, two days a week at 50 minutes each section "
+ASEN-4067-010,Schwartz,40,Lecture,50x2,,,,"Lecture 50 (x2) Crosslisted with ASEN 5067-010, office hours scheduled on top which conflicts with the contact meeting hours required. RO is getting more strict on the math here."
+ASEN-4067-011,Schwartz,40,Lab,110x1,,,,Crosslisted with ASEN 5067-011
+ASEN-4138-010,Mah,40,Lecture,50x2,,,,Reducing cap since course may be offered both Fall and Spring
+ASEN-4138-011,Mah,40,Lab,110x1,,,,Could potentially offer single lab
+ASEN-4138-012,Mah,20,Lab,110x1,,,,Could potentially offer single lab
+ASEN-4519-001,Rafi,40,Lecture,150xAny,,,,No history - flexible enrollment
+ASEN-5018-800,Marshall,60,Lecture,50x1,,,,Primary Fac? Cross-listed with ASEN 6028 section - lecture can be remote
+ASEN-5018-801,Sternovsky,15,Lecture,110x2,,,,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5018-802,Tozer,15,Lecture,110x2,,,,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5018-803,Morton,15,Lecture,110x2,,,,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5018-804,Palo,15,Lecture,110x2,,,,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5044-001,Ahmed,80,Lecture,150xAny,,,,
+ASEN-5050-001,Bosanac,80,Lecture,150xAny,,,,
+ASEN-5051-001,Jansen,40,Lecture,150xAny,,,,
+ASEN-5090-001,Axelrad,60,Lecture,150xAny,,,,
+ASEN-5131-001,MacDonald,60,Lecture,150xAny,,,,
+ASEN-5158-001,Clark,60,Lecture,150xAny,,,,
+ASEN-5218-001,Lopez Jimenez,20,Lecture,150xAny,,,,Crosslisted with ASEN 4218
+ASEN-5251-001,Minton,60,Lecture,150xAny,,,,
+ASEN-5307-001,Nerem,60,Lecture,150xAny,,,,
+ASEN-5335-001,Li,60,Lecture,150xAny,,,,
+ASEN-5519-001,Ghobadi-Far,60,Lecture,150xAny,,,,
+ASEN-5519-003,Hussein,20,Lecture,150xAny,,,,
+ASEN-6010-001,Schaub,30,Lecture,150xAny,,,TTH-0830,"Professor prefers 8:30 start time, TTh"
+ASEN-6116-001,Nabity,30,Lecture,150xAny,,,,
+ASEN-6265-001,Chu,20,Lecture,150xAny,,,,
+ASEN-6331-001,Jansen,20,Lecture,150xAny,,,,
+ASEN-6337-001,Matsuo,20,Lecture,150xAny,,,,
+ASEN-6412-001,Doostan,24,Lecture,150xAny,,,,
+APPM-2360-001,APPM INSTRUCTOR,80,Lecture,150xAny,,AERO 111,MWF-1250,

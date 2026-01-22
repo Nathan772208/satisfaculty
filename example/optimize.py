@@ -8,7 +8,7 @@ Each user can create their own script with different constraint and objective co
 
 from satisfaculty import *
 
-scheduler = InstructorScheduler(solver_verbose=True)            
+scheduler = InstructorScheduler(solver_verbose=True)
 scheduler.load_rooms('aes-rooms.csv')
 scheduler.load_courses('aes-courses.csv')
 scheduler.load_time_slots('aes-time_slots.csv')

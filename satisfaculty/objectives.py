@@ -7,7 +7,7 @@ in different orders to create customized optimization strategies.
 """
 
 from .objective_base import ObjectiveBase
-from pulp import lpSum, LpAffineExpression
+from pulp import lpSum, LpAffineExpression, LpVariable
 from .scheduler import filter_keys
 from .utils import time_to_minutes
 from typing import Optional, List
@@ -293,3 +293,115 @@ class MinimizePreferredRooms(ObjectiveBase):
 
         filtered = filter_keys(scheduler.keys, predicate=matches_criteria)
         return lpSum(scheduler.x[k] for k in filtered)
+
+
+class MaximizeBackToBackCourses(ObjectiveBase):
+    """
+    Maximize back-to-back placement for a specified set of courses.
+
+    This objective rewards adjacent time slots (by start time) that are
+    assigned to different courses in the specified list. Adjacency is
+    evaluated within the same slot type (and optionally the same days set).
+    """
+
+    _instance_count = 0
+
+    def __init__(
+        self,
+        courses: List[str],
+        same_days: bool = True,
+        tolerance: float = 0.0
+    ):
+        """
+        Args:
+            courses: List of course names to cluster back-to-back.
+            same_days: If True, only count adjacency within the same days set
+                       (e.g., MWF with MWF). If False, only slot type is matched.
+            tolerance: Fractional tolerance for lexicographic constraint.
+        """
+        self.courses = list(courses)
+        self.same_days = same_days
+        self._built = False
+        self._objective_expr = None
+
+        MaximizeBackToBackCourses._instance_count += 1
+        self._id = MaximizeBackToBackCourses._instance_count
+
+        super().__init__(
+            name=f"Maximize back-to-back for {len(self.courses)} course(s)",
+            sense='maximize',
+            tolerance=tolerance
+        )
+
+    def _build(self, scheduler):
+        missing = [c for c in self.courses if c not in scheduler.courses]
+        if missing:
+            raise ValueError(f"Unknown course(s) in MaximizeBackToBackCourses: {missing}")
+
+        # Group time slots by slot type (+ days if requested)
+        groups = {}
+        for slot in scheduler.time_slots:
+            slot_type = scheduler.slot_types[slot]
+            if self.same_days:
+                days_key = tuple(sorted(scheduler.slot_days[slot]))
+                key = (slot_type, days_key)
+            else:
+                key = (slot_type,)
+            groups.setdefault(key, []).append(slot)
+
+        # Build adjacency list of consecutive (slot1, slot2) pairs
+        adjacent_slots = []
+        for slots in groups.values():
+            slots_sorted = sorted(slots, key=lambda s: scheduler.slot_start_minutes[s])
+            for i in range(len(slots_sorted) - 1):
+                s1 = slots_sorted[i]
+                s2 = slots_sorted[i + 1]
+                adjacent_slots.append((s1, s2))
+
+        # Precompute course-slot assignment expressions (summing over rooms)
+        course_slot_expr = {}
+        for course in self.courses:
+            for slot in scheduler.time_slots:
+                keys = filter_keys(scheduler.keys, course=course, time_slot=slot)
+                if keys:
+                    course_slot_expr[(course, slot)] = lpSum(scheduler.x[k] for k in keys)
+
+        adjacency_vars = []
+        var_count = 0
+        for i, course_a in enumerate(self.courses):
+            for course_b in self.courses[i + 1:]:
+                for s1, s2 in adjacent_slots:
+                    # course_a in s1 AND course_b in s2
+                    if (course_a, s1) in course_slot_expr and (course_b, s2) in course_slot_expr:
+                        y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                        scheduler.prob += (y <= course_slot_expr[(course_a, s1)], f"bb_{self._id}_{var_count}_ub1")
+                        scheduler.prob += (y <= course_slot_expr[(course_b, s2)], f"bb_{self._id}_{var_count}_ub2")
+                        scheduler.prob += (
+                            y >= course_slot_expr[(course_a, s1)] + course_slot_expr[(course_b, s2)] - 1,
+                            f"bb_{self._id}_{var_count}_lb"
+                        )
+                        adjacency_vars.append(y)
+                        var_count += 1
+
+                    # course_a in s2 AND course_b in s1 (reverse order)
+                    if (course_a, s2) in course_slot_expr and (course_b, s1) in course_slot_expr:
+                        y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                        scheduler.prob += (y <= course_slot_expr[(course_a, s2)], f"bb_{self._id}_{var_count}_ub1")
+                        scheduler.prob += (y <= course_slot_expr[(course_b, s1)], f"bb_{self._id}_{var_count}_ub2")
+                        scheduler.prob += (
+                            y >= course_slot_expr[(course_a, s2)] + course_slot_expr[(course_b, s1)] - 1,
+                            f"bb_{self._id}_{var_count}_lb"
+                        )
+                        adjacency_vars.append(y)
+                        var_count += 1
+
+        if adjacency_vars:
+            self._objective_expr = lpSum(adjacency_vars)
+        else:
+            self._objective_expr = LpAffineExpression()
+        self._built = True
+
+    def evaluate(self, scheduler):
+        if not self._built:
+            self._build(scheduler)
+        return self._objective_expr

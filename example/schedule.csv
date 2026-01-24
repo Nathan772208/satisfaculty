@@ -1,82 +1,85 @@
 Course,Room,Days,Start,End,Instructor,Enrollment,Note
-ASEN-3405-001,AERO 111,MWF,09:35,10:25,Arya,75,
-ASEN-6412-001,AERO 114,MWF,10:40,11:30,Doostan,24,
-ASEN-6331-001,AERO 111,MWF,08:30,09:20,Jansen,20,
-ASEN-2501-012,AERO 141,T,13:00,14:50,Marshall,90,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
-ASEN-2401-002,MAIN 120,TTH,10:00,11:15,Glusman,160,
-ASEN-4138-011,AERO 141,TH,13:00,14:50,Mah,40,Could potentially offer single lab
-ASEN-4057-010,AERO 114,MW,11:45,12:35,Le Moine,40,"Lecture - 50 x2, B2B lecture lab, two days a week at 50 minutes each section"
-ASEN-3502-010,AERO 120,MW,13:55,14:45,Sunberg,190,Lecture-50x2
-ASEN-2402-002,MAIN 120,MWF,13:55,14:45,Glusman,60,May remove this extra section
-ASEN-4018-012,AERO N100,TTH,08:30,10:20,Neogi,55,
-ASEN-3501-013,AERO 141,MW,08:30,10:20,TA1,60,Lab-110x2
-ASEN-3046-001,MAIN 120,MWF,08:30,09:20,Stanford-McIntyre,150,No future offerings listed for 26-27 AY
-ASEN-3502-011,AERO N100,F,10:40,12:30,TA2,65,Lab-110x1
-ASEN-2501-010,AERO 120,MW,10:40,11:30,Marshall,180,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
-ASEN-3403-001,MAIN 120,MWF,15:00,15:50,Farnsworth,180,
-ASEN-4067-011,AERO 141,M,12:50,14:40,Schwartz,40,Crosslisted with ASEN 5067-011
-ASEN-1009-001,AERO 111,F,10:40,11:30,Schaub,60,Lecture-50 x1 A larger classroom is likely needed since this course is combined with department seminars
-ASEN-2402-001,MAIN 120,MWF,09:35,10:25,Glusman,120,
-ASEN-4018-016,AERO 141,MW,10:40,12:30,Hoke,55,
-ASEN-3503-011,AERO 141,T,10:55,12:45,TA3,95,Lab-110x1
-ASEN-1030-010,MAIN 120,MW,11:45,12:35,Chu,75,Lecture-50 x2
-ASEN-2502-011,AERO 141,F,10:40,12:30,Mah,90,
-ASEN-4138-012,AERO 141,F,08:30,10:20,Mah,20,Could potentially offer single lab
-ASEN-2501-011,AERO 141,TH,10:55,12:45,Marshall,90,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
-ASEN-5307-001,AERO 111,MWF,11:45,12:35,Nerem,60,
-ASEN-2519-001,AERO 114,TTH,10:00,11:15,Muldrow,30,Chris leaving; alt fac instructor?
-ASEN-4018-011,AERO N100,MW,08:30,10:20,Nabity,55,"Lab-110 x2, Can the algorithm address deconflicting multiple faculty for two separate lab-time options? Hayman/Nabity, Neogi/Li,  Rafi, Sternovsky/Wingate, Holinger/Matsuo, Hoke, Comandur"
-ASEN-5050-001,AERO 111,TTH,10:00,11:15,Bosanac,80,
-ASEN-3503-013,AERO 141,F,12:50,14:40,TA3,60,Lab-110x1
-ASEN-6337-001,AERO 114,MWF,13:55,14:45,Matsuo,20,
-ASEN-4067-010,AERO N250,MW,16:05,16:55,Schwartz,40,"Lecture 50 (x2) Crosslisted with ASEN 5067-010, office hours scheduled on top which conflicts with the contact meeting hours required. RO is getting more strict on the math here."
-ASEN-6265-001,AERO 114,MWF,15:00,15:50,Chu,20,
-ASEN-3501-011,AERO 141,MW,15:00,16:50,TA1,65,Lab-110x2
-ASEN-1403-001,AERO 111,TTH,08:30,09:45,Rhode,75,"Sections must be held on the same day, SEEN N136 option?"
-ASEN-5018-803,AERO 232,MW,15:00,16:50,Morton,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
-ASEN-4057-011,AERO N100,F,08:30,10:20,Le Moine,40,"Lab-50 x2, B2B lecture lab, two days a week at 50 minutes each section "
-ASEN-3404-002,AERO 120,MWF,11:45,12:35,Instructor,180,Will become 3406 section in the spring
-ASEN-4018-017,AERO N100,TTH,10:55,12:45,Comandur,55,
-ASEN-2403-001,AERO 120,MWF,09:35,10:25,Ghobadi-Far,120,
-ASEN-5335-001,AERO 111,TTH,11:30,12:45,Li,60,
-ASEN-2403-002,AERO 120,TTH,08:30,09:45,Ghobadi-Far,120,No second section for Fall?
-ASEN-3402-001,AERO 120,MWF,12:50,13:40,Le Moine,180,
-ASEN-5519-003,AERO 114,MWF,16:05,16:55,Hussein,20,
-ASEN-1030-020,AERO 111,MW,10:40,11:30,Hodgkinson,75,Lecture-50 x2
-ASEN-1030-012,AERO N100,TH,13:00,14:50,Hodgkinson,75,
-ASEN-5018-804,AERO 232,MW,12:50,14:40,Palo,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
-ASEN-3501-010,AERO 120,F,08:30,09:20,Hodgkinson,190,Lecture-50x1
-ASEN-3503-012,AERO 141,W,12:50,14:40,TA3,95,Lab-110x1
-ASEN-4013-001,AERO 120,TTH,10:00,11:15,Ali,175,
-ASEN-6116-001,AERO 111,TTH,14:30,15:45,Nabity,30,
-ASEN-5018-801,AERO 232,TTH,10:55,12:45,Sternovsky,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
-ASEN-3502-012,AERO N100,F,12:50,14:40,TA2,65,Lab-110x1
-ASEN-1030-011,AERO N100,T,13:00,14:50,Chu,75,
-ASEN-5044-001,AERO 111,MWF,15:00,15:50,Ahmed,80,
-ASEN-5218-001,AERO 232,MWF,08:30,09:20,Lopez Jimenez,20,Crosslisted with ASEN 4218
-ASEN-3501-012,AERO 141,TTH,08:30,10:20,TA1,65,Lab-110x2
-ASEN-3502-013,AERO N100,F,15:00,16:50,TA2,60,Lab-110x1
-ASEN-5090-001,AERO N240,MWF,09:35,10:25,Axelrad,60,
-ASEN-1403-002,MAIN 120,TTH,14:30,15:45,Rhode,75,"Sections must be held on the same day, SEEN N136 option?"
-ASEN-2502-010,AERO 120,MW,15:00,15:50,Mah,180,Double check conlicts for Hoke
-ASEN-3404-001,AERO 120,TTH,13:00,14:15,Scheeres,180,
-ASEN-2401-001,MAIN 120,MWF,16:05,16:55,Comandur,160,
-ASEN-4018-014,AERO N100,MW,12:50,14:40,Sternovsky,55,
-ASEN-3401-001,MAIN 120,MWF,12:50,13:40,Shakiba,180,
-ASEN-4519-001,AERO 120,MWF,16:05,16:55,Rafi,40,No history - flexible enrollment
-ASEN-5051-001,AERO N240,MWF,16:05,16:55,Jansen,40,
 APPM-2360-001,AERO 111,MWF,12:50,13:40,APPM INSTRUCTOR,80,
-ASEN-2502-012,AERO 141,F,15:00,16:50,Hoke,90,
-ASEN-4018-013,AERO N100,MW,10:40,12:30,Rafi,55,"Lab-110 x2, Breaking out labs like last year? How to do this with the algorithm"
-ASEN-5251-001,AERO 111,TTH,13:00,14:15,Minton,60,
-ASEN-5519-001,AERO 111,MWF,16:05,16:55,Ghobadi-Far,60,
-ASEN-4018-015,AERO N100,MW,15:00,16:50,Holizinger,55,
-ASEN-3036-001,MAIN 120,MWF,10:40,11:30,Sobhani,80,Only offering in Spring?
-ASEN-1969-001,MAIN 120,TTH,08:30,09:45,Sobhani,100,Scheduled on Main MUEN; not offered in Fall before - no classroom precedent
-ASEN-4138-010,AERO N240,MW,08:30,09:20,Mah,40,Reducing cap since course may be offered both Fall and Spring
-ASEN-6010-001,AERO 114,TTH,08:30,09:45,Schaub,30,"Professor prefers 8:30 start time, TTh"
-ASEN-5018-800,AERO 111,M,13:55,14:45,Marshall,60,Primary Fac? Cross-listed with ASEN 6028 section - lecture can be remote
-ASEN-5018-802,AERO 232,MW,10:40,12:30,Tozer,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
-ASEN-5131-001,AERO 114,TTH,14:30,15:45,MacDonald,60,
-ASEN-5158-001,AERO N240,MWF,15:00,15:50,Clark,60,
-ASEN-3503-010,AERO 120,MW,08:30,09:20,Morton,190,Lecture-50x2
+ASEN-4018-014,AERO N100,TTH,13:00,14:50,Sternovsky,55,
+ASEN-4138-011,AERO 141,TH,13:00,14:50,Mah,40,Could potentially offer single lab
+ASEN-5044-001,AERO 111,TTH,11:30,12:45,Ahmed,80,
+ASEN-2402-001,MAIN 120,TTH,13:00,14:15,Glusman,120,
+ASEN-3503-012,AERO 141,T,08:30,10:20,TA3,95,Lab-110x1
+ASEN-4138-012,AERO 141,F,15:00,16:50,Mah,20,Could potentially offer single lab
+ASEN-4057-011,AERO 141,F,12:50,14:40,Le Moine,40,"Lab-50 x2, B2B lecture lab, two days a week at 50 minutes each section "
+ASEN-5051-001,AERO N250,MWF,15:00,15:50,Jansen,40,
+ASEN-5018-804,AERO N250,MW,12:50,14:40,Palo,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5050-001,AERO 111,TTH,13:00,14:15,Bosanac,80,
+ASEN-5131-001,AERO N240,TTH,11:30,12:45,MacDonald,60,
+ASEN-3503-010,AERO 120,MW,10:40,11:30,Morton,190,Lecture-50x2
+ASEN-3046-001,MAIN 120,MWF,10:40,11:30,Stanford-McIntyre,150,No future offerings listed for 26-27 AY
+ASEN-5018-801,AERO 114,MW,15:00,16:50,Sternovsky,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-2401-001,MAIN 120,MWF,13:55,14:45,Comandur,160,
+ASEN-3502-010,AERO 120,MW,13:55,14:45,Sunberg,190,Lecture-50x2
+ASEN-6331-001,AERO 232,MWF,12:50,13:40,Jansen,20,
+ASEN-6265-001,AERO 114,MWF,09:35,10:25,Chu,20,
+ASEN-1030-010,AERO 111,MW,10:40,11:30,Chu,75,Lecture-50 x2
+ASEN-5519-003,AERO 232,MWF,11:45,12:35,Hussein,20,
+ASEN-1009-001,AERO 120,F,10:40,11:30,Schaub,60,Lecture-50 x1 A larger classroom is likely needed since this course is combined with department seminars
+ASEN-2401-002,MAIN 120,MWF,12:50,13:40,Glusman,160,
+ASEN-5251-001,AERO N240,TTH,10:00,11:15,Minton,60,
+ASEN-5018-803,AERO 114,MW,12:50,14:40,Morton,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-5218-001,AERO 232,MWF,15:00,15:50,Lopez Jimenez,20,Crosslisted with ASEN 4218
+ASEN-3404-001,AERO 120,TTH,10:00,11:15,Scheeres,180,
+ASEN-3502-013,AERO N100,F,10:40,12:30,TA2,60,Lab-110x1
+APPM-2360-004,AERO 232,TH,14:05,14:55,APPM TA3,30,
+ASEN-2501-010,AERO 120,MW,15:00,15:50,Marshall,180,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-1403-002,AERO 111,MWF,15:00,15:50,Rhode,75,"Sections must be held on the same day, SEEN N136 option?"
+ASEN-5018-802,AERO N240,TTH,13:00,14:50,Tozer,15,Cross-listed with ASEN 6028 section; complete guess on enrollment cap
+ASEN-2403-001,AERO 120,MWF,16:05,16:55,Ghobadi-Far,120,
+ASEN-3501-011,AERO 141,MW,08:30,10:20,TA1,65,Lab-110x2
+ASEN-5158-001,AERO N240,MWF,11:45,12:35,Clark,60,
+ASEN-5018-800,AERO 120,F,09:35,10:25,Marshall,60,Primary Fac? Cross-listed with ASEN 6028 section - lecture can be remote
+ASEN-3502-011,AERO N100,F,12:50,14:40,TA2,65,Lab-110x1
+ASEN-3501-012,AERO 141,MW,10:40,12:30,TA1,65,Lab-110x2
+APPM-2360-002,AERO 232,TH,11:30,12:20,APPM TA1,30,
+ASEN-4057-010,AERO N250,MW,10:40,11:30,Le Moine,40,"Lecture - 50 x2, B2B lecture lab, two days a week at 50 minutes each section"
+ASEN-2502-010,AERO 120,MW,09:35,10:25,Mah,180,Double check conlicts for Hoke
+ASEN-1030-012,AERO N100,F,08:30,10:20,Hodgkinson,75,
+ASEN-4018-012,AERO N100,MW,08:30,10:20,Neogi,55,
+ASEN-3403-001,AERO 120,MWF,08:30,09:20,Farnsworth,180,
+ASEN-2519-001,AERO 232,MWF,13:55,14:45,Muldrow,30,Chris leaving; alt fac instructor?
+ASEN-4018-016,AERO N100,MW,12:50,14:40,Hoke,55,
+ASEN-4067-011,AERO N100,W,15:00,16:50,Schwartz,40,Crosslisted with ASEN 5067-011
+ASEN-5307-001,AERO 114,TTH,11:30,12:45,Nerem,60,
+ASEN-2402-002,MAIN 120,TTH,14:30,15:45,Glusman,60,May remove this extra section
+APPM-2360-003,AERO 232,TH,13:00,13:50,APPM TA2,30,
+ASEN-4018-011,AERO 141,MW,15:00,16:50,Nabity,55,"Lab-110 x2, Can the algorithm address deconflicting multiple faculty for two separate lab-time options? Hayman/Nabity, Neogi/Li,  Rafi, Sternovsky/Wingate, Holinger/Matsuo, Hoke, Comandur"
+ASEN-3501-010,AERO 120,F,15:00,15:50,Hodgkinson,190,Lecture-50x1
+ASEN-6412-001,AERO N250,TTH,14:30,15:45,Doostan,24,
+ASEN-3503-013,AERO 141,T,13:00,14:50,TA3,60,Lab-110x1
+ASEN-3503-011,AERO 141,T,10:55,12:45,TA3,95,Lab-110x1
+ASEN-4018-013,AERO N100,TTH,08:30,10:20,Rafi,55,"Lab-110 x2, Breaking out labs like last year? How to do this with the algorithm"
+ASEN-3404-002,AERO 120,TTH,13:00,14:15,Instructor,180,Will become 3406 section in the spring
+ASEN-5335-001,AERO 114,TTH,10:00,11:15,Li,60,
+ASEN-2501-012,AERO 141,TH,10:55,12:45,Marshall,90,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-3036-001,MAIN 120,MWF,16:05,16:55,Sobhani,80,Only offering in Spring?
+ASEN-3502-012,AERO N100,F,15:00,16:50,TA2,65,Lab-110x1
+ASEN-3402-001,AERO 120,TTH,11:30,12:45,Le Moine,180,
+ASEN-1969-001,MAIN 120,MWF,15:00,15:50,Sobhani,100,Scheduled on Main MUEN; not offered in Fall before - no classroom precedent
+ASEN-4067-010,AERO N250,MW,09:35,10:25,Schwartz,40,"Lecture 50 (x2) Crosslisted with ASEN 5067-010, office hours scheduled on top which conflicts with the contact meeting hours required. RO is getting more strict on the math here."
+ASEN-3501-013,AERO 141,MW,12:50,14:40,TA1,60,Lab-110x2
+ASEN-1403-001,AERO 120,MWF,11:45,12:35,Rhode,75,"Sections must be held on the same day, SEEN N136 option?"
+ASEN-4138-010,AERO N250,MW,16:05,16:55,Mah,40,Reducing cap since course may be offered both Fall and Spring
+ASEN-3405-001,AERO 111,MWF,09:35,10:25,Arya,75,
+ASEN-2403-002,AERO 120,MWF,17:10,18:00,Ghobadi-Far,120,No second section for Fall?
+ASEN-4519-001,AERO N250,TTH,13:00,14:15,Rafi,40,No history - flexible enrollment
+ASEN-2502-011,AERO 141,F,08:30,10:20,Mah,90,
+ASEN-2502-012,AERO 141,F,10:40,12:30,Hoke,90,
+ASEN-3401-001,AERO 120,TTH,14:30,15:45,Shakiba,180,
+ASEN-4013-001,AERO 120,TTH,16:00,17:15,Ali,175,
+ASEN-6337-001,AERO 232,MWF,09:35,10:25,Matsuo,20,
+ASEN-6010-001,AERO 120,TTH,08:30,09:45,Schaub,30,"Professor prefers 8:30 start time, TTh"
+ASEN-6116-001,AERO N250,TTH,11:30,12:45,Nabity,30,
+ASEN-5519-001,AERO 111,TTH,10:00,11:15,Ghobadi-Far,60,
+ASEN-4018-015,AERO N100,TTH,10:55,12:45,Holizinger,55,
+ASEN-2501-011,AERO 141,TH,08:30,10:20,Marshall,90,Add McMahon as  additional team instructor. Left as Marshall so algorithm wouldn't double book him
+ASEN-1030-011,AERO N100,M,15:00,16:50,Chu,75,
+ASEN-5090-001,AERO N240,MWF,10:40,11:30,Axelrad,60,
+ASEN-4018-017,AERO N100,MW,10:40,12:30,Comandur,55,
+ASEN-1030-020,AERO 120,MW,12:50,13:40,Hodgkinson,75,Lecture-50 x2

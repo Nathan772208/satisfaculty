@@ -310,6 +310,7 @@ class MaximizeBackToBackCourses(ObjectiveBase):
         self,
         courses: List[str],
         same_days: bool = True,
+        same_room: bool = False,
         tolerance: float = 0.0
     ):
         """
@@ -317,10 +318,12 @@ class MaximizeBackToBackCourses(ObjectiveBase):
             courses: List of course names to cluster back-to-back.
             same_days: If True, only count adjacency within the same days set
                        (e.g., MWF with MWF). If False, only slot type is matched.
+            same_room: If True, only count adjacency when both courses are in the same room.
             tolerance: Fractional tolerance for lexicographic constraint.
         """
         self.courses = list(courses)
         self.same_days = same_days
+        self.same_room = same_room
         self._built = False
         self._objective_expr = None
 
@@ -366,34 +369,70 @@ class MaximizeBackToBackCourses(ObjectiveBase):
                 if keys:
                     course_slot_expr[(course, slot)] = lpSum(scheduler.x[k] for k in keys)
 
+        # Precompute course-slot-room expressions when same_room is required
+        course_slot_room_expr = {}
+        if self.same_room:
+            for course in self.courses:
+                for slot in scheduler.time_slots:
+                    for room in scheduler.rooms:
+                        keys = filter_keys(scheduler.keys, course=course, room=room, time_slot=slot)
+                        if keys:
+                            course_slot_room_expr[(course, slot, room)] = lpSum(scheduler.x[k] for k in keys)
+
         adjacency_vars = []
         var_count = 0
         for i, course_a in enumerate(self.courses):
             for course_b in self.courses[i + 1:]:
                 for s1, s2 in adjacent_slots:
-                    # course_a in s1 AND course_b in s2
-                    if (course_a, s1) in course_slot_expr and (course_b, s2) in course_slot_expr:
-                        y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
-                        scheduler.prob += (y <= course_slot_expr[(course_a, s1)], f"bb_{self._id}_{var_count}_ub1")
-                        scheduler.prob += (y <= course_slot_expr[(course_b, s2)], f"bb_{self._id}_{var_count}_ub2")
-                        scheduler.prob += (
-                            y >= course_slot_expr[(course_a, s1)] + course_slot_expr[(course_b, s2)] - 1,
-                            f"bb_{self._id}_{var_count}_lb"
-                        )
-                        adjacency_vars.append(y)
-                        var_count += 1
+                    if self.same_room:
+                        for room in scheduler.rooms:
+                            # course_a in s1 AND course_b in s2 (same room)
+                            if (course_a, s1, room) in course_slot_room_expr and (course_b, s2, room) in course_slot_room_expr:
+                                y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                                scheduler.prob += (y <= course_slot_room_expr[(course_a, s1, room)], f"bb_{self._id}_{var_count}_ub1")
+                                scheduler.prob += (y <= course_slot_room_expr[(course_b, s2, room)], f"bb_{self._id}_{var_count}_ub2")
+                                scheduler.prob += (
+                                    y >= course_slot_room_expr[(course_a, s1, room)] + course_slot_room_expr[(course_b, s2, room)] - 1,
+                                    f"bb_{self._id}_{var_count}_lb"
+                                )
+                                adjacency_vars.append(y)
+                                var_count += 1
 
-                    # course_a in s2 AND course_b in s1 (reverse order)
-                    if (course_a, s2) in course_slot_expr and (course_b, s1) in course_slot_expr:
-                        y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
-                        scheduler.prob += (y <= course_slot_expr[(course_a, s2)], f"bb_{self._id}_{var_count}_ub1")
-                        scheduler.prob += (y <= course_slot_expr[(course_b, s1)], f"bb_{self._id}_{var_count}_ub2")
-                        scheduler.prob += (
-                            y >= course_slot_expr[(course_a, s2)] + course_slot_expr[(course_b, s1)] - 1,
-                            f"bb_{self._id}_{var_count}_lb"
-                        )
-                        adjacency_vars.append(y)
-                        var_count += 1
+                            # course_a in s2 AND course_b in s1 (same room, reverse)
+                            if (course_a, s2, room) in course_slot_room_expr and (course_b, s1, room) in course_slot_room_expr:
+                                y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                                scheduler.prob += (y <= course_slot_room_expr[(course_a, s2, room)], f"bb_{self._id}_{var_count}_ub1")
+                                scheduler.prob += (y <= course_slot_room_expr[(course_b, s1, room)], f"bb_{self._id}_{var_count}_ub2")
+                                scheduler.prob += (
+                                    y >= course_slot_room_expr[(course_a, s2, room)] + course_slot_room_expr[(course_b, s1, room)] - 1,
+                                    f"bb_{self._id}_{var_count}_lb"
+                                )
+                                adjacency_vars.append(y)
+                                var_count += 1
+                    else:
+                        # course_a in s1 AND course_b in s2
+                        if (course_a, s1) in course_slot_expr and (course_b, s2) in course_slot_expr:
+                            y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                            scheduler.prob += (y <= course_slot_expr[(course_a, s1)], f"bb_{self._id}_{var_count}_ub1")
+                            scheduler.prob += (y <= course_slot_expr[(course_b, s2)], f"bb_{self._id}_{var_count}_ub2")
+                            scheduler.prob += (
+                                y >= course_slot_expr[(course_a, s1)] + course_slot_expr[(course_b, s2)] - 1,
+                                f"bb_{self._id}_{var_count}_lb"
+                            )
+                            adjacency_vars.append(y)
+                            var_count += 1
+
+                        # course_a in s2 AND course_b in s1 (reverse order)
+                        if (course_a, s2) in course_slot_expr and (course_b, s1) in course_slot_expr:
+                            y = LpVariable(f"bb_{self._id}_{var_count}", cat='Binary')
+                            scheduler.prob += (y <= course_slot_expr[(course_a, s2)], f"bb_{self._id}_{var_count}_ub1")
+                            scheduler.prob += (y <= course_slot_expr[(course_b, s1)], f"bb_{self._id}_{var_count}_ub2")
+                            scheduler.prob += (
+                                y >= course_slot_expr[(course_a, s2)] + course_slot_expr[(course_b, s1)] - 1,
+                                f"bb_{self._id}_{var_count}_lb"
+                            )
+                            adjacency_vars.append(y)
+                            var_count += 1
 
         if adjacency_vars:
             self._objective_expr = lpSum(adjacency_vars)

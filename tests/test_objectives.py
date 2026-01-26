@@ -14,6 +14,7 @@ from satisfaculty import (
     AssignAllCourses,
     NoRoomOverlap,
     MinimizeMinutesAfter,
+    MaximizeBackToBackCourses,
 )
 
 
@@ -116,6 +117,42 @@ def test_minimize_minutes_after_zero_when_before_threshold():
         assert result is not None
         # Either slot is valid since both contribute 0 minutes after 17:00
 
+def test_back_to_back_prefers_consecutive_slots():
+    """Test that MaximizeBackToBackCourses prefers consecutive time slots."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Jones,50,Lecture,Lecture\n'
+            ),
+            # S1 and S2 are conscutive and S3 is later
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0905,MWF,09:05,09:55,Lecture\n'
+                'MWF-1010,MWF,10:10,11:00,Lecture\n'
+                'TTH-1300,TTH,13:00,14:00,Lecture\n'
+            ),
+        )
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Result should prefer back to back time slots of MWF-0905 and MWF-1010
+        result = scheduler.lexicographic_optimize([MaximizeBackToBackCourses(['C1', 'C2'])])
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Extract the assigned start times for C1 and C2
+        starts = sorted(result['Start'].tolist())
+        # Expect the consecutive pair (09:05, 10:10)
+        assert starts == ['09:05', '10:10']
+
 
 def run_all_tests():
     """Run all tests."""
@@ -129,6 +166,9 @@ def run_all_tests():
 
     test_minimize_minutes_after_zero_when_before_threshold()
     print('✓ test_minimize_minutes_after_zero_when_before_threshold passed')
+
+    test_back_to_back_prefers_consecutive_slots()
+    print('✓ test_maximize_back_to_back_prefers_consecutive_slots passed')
 
     print('\n' + '='*50)
     print('All objectives tests passed!')

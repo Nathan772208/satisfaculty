@@ -143,7 +143,10 @@ def test_back_to_back_prefers_consecutive_slots():
         scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
 
         # Result should prefer back to back time slots of MWF-0905 and MWF-1010
-        result = scheduler.lexicographic_optimize([MaximizeBackToBackCourses(['C1', 'C2'])])
+        result = scheduler.lexicographic_optimize([
+            MaximizeBackToBackCourses(['C1', 'C2']),
+            MinimizeClassesBefore("10:00")
+        ])
 
         assert result is not None
         assert len(result) == 2

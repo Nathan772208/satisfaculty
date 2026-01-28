@@ -15,6 +15,7 @@ from satisfaculty import (
     NoRoomOverlap,
     MinimizeMinutesAfter,
     MaximizeBackToBackCourses,
+    MinimizeClassesBefore,
 )
 
 

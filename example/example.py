@@ -85,16 +85,25 @@ scheduler.add_constraints([
     RoomCapacity(),
     ForceRooms(),
     ForceTimeSlots(),
-    NoCourseOverlap(asen2401_section + asen2402_section + asen2403_section + asen2501_section + asen2502_section, name="ASEN-2401, ASEN-2402, ASEN-2403, ASEN-2501, and ASEN-2502"),
+    NoCourseOverlap(asen2401_section + asen2501_section, name="ASEN-2401 and ASEN-2501"),
+    NoCourseOverlap(asen2401_section + asen2402_section + asen2502_section, name="ASEN-2401, ASEN-2402, and ASEN-2502"),
+    NoCourseOverlap(asen3404_section + asen3405_section + asen3502_section + asen3503_section + asen3401_section, name="ASEN-3404, ASEN-3405, ASEN-3502, ASEN-3503, and ASEN-3401"),
+    NoCourseOverlap(asen3404_section + asen3405_section + asen3402_section + asen3403_section + asen3501_section, name="ASEN-3404, ASEN-3405, ASEN-3402, ASEN-3403, and ASEN-3501"),
     NoCourseOverlap(asen4013 + asen4018_sections, name="ASEN-4013 and ASEN-4018"),
-    NoCourseOverlap(asen3401_section + asen3402_section + asen3404_section + asen3501_section, name="ASEN-3401, ASEN-3402, ASEN-3404, and ASEN-3501"),
-    NoCourseOverlap(asen3403_section + asen3405_section + asen3502_section + asen3503_section, name="ASEN-3403, ASEN-3405, ASEN-3502, and ASEN-3503"),
+    NoCourseOverlap(asen3405_section + asen4018_sections, name="ASEN-3405 and ASEN-4018"),
+
 ])
 
 # Define lexicographic optimization objectives (in priority order)
 objectives = [
     MaximizeBackToBackCourses(
-        courses=["ASEN-2502-011", "ASEN-2502-012"],
+        courses=["ASEN-3503-011", "ASEN-3503-012", "ASEN-3503-013"],
+        same_days=True,
+        same_room=True,
+        tolerance=0.0
+    ),
+     MaximizeBackToBackCourses(
+        courses=["ASEN-3501-011", "ASEN-3501-012", "ASEN-3501-013"],
         same_days=True,
         same_room=True,
         tolerance=0.0
@@ -106,23 +115,17 @@ objectives = [
         tolerance=0.0
     ),
     MaximizeBackToBackCourses(
-        courses=["ASEN-3501-011", "ASEN-3501-012", "ASEN-3501-013"],
+        courses=["ASEN-2502-011", "ASEN-2502-012"],
         same_days=True,
         same_room=True,
         tolerance=0.0
     ),
-    MaximizeBackToBackCourses(
-        courses=["ASEN-3502-011", "ASEN-3502-012", "ASEN-3502-013"],
-        same_days=True,
-        same_room=True,
-        tolerance=0.0
-    ),
-    MaximizeBackToBackCourses(
-        courses=["ASEN-3503-011", "ASEN-3503-012", "ASEN-3503-013"],
-        same_days=True,
-        same_room=True,
-        tolerance=0.0
-    ),
+    # MaximizeBackToBackCourses(
+    #     courses=["ASEN-3502-011", "ASEN-3502-012", "ASEN-3502-013"],
+    #     same_days=True,
+    #     same_room=True,
+    #     tolerance=0.0
+    # ),
     MinimizePreferredRooms(['MAIN 120']),
     MaximizePreferredRooms(['AERO 120']),
     MinimizeClassesAfter('17:00'),

@@ -157,6 +157,61 @@ def test_capacity_check_raises_without_data():
         pass  # Expected - either ValueError or AttributeError is acceptable
 
 
+def test_capacity_check_multiple_room_types():
+    """Test that rooms with multiple types are counted for each type."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            # FlexRoom can be used as both Lecture and Lab
+            rooms_data='Room,Capacity,Room Type\nFlexRoom,100,Lecture; Lab\n',
+            courses_data='Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                        'C1,Smith,40,Lecture,Lecture\n'
+                        'C2,Jones,40,Lab,Lab\n',
+            slots_data='Slot,Days,Start,End,Slot Type\n'
+                      'MWF-0830,MWF,08:30,09:20,Lecture\n'
+                      'M-0830,M,08:30,10:20,Lab\n',
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+
+        # FlexRoom counts as 1 Lecture room and 1 Lab room
+        # Lecture: 1 course, 1 room, 1 slot = OK
+        # Lab: 1 course, 1 room, 1 slot = OK
+        warnings = scheduler.capacity_check()
+        assert warnings == [], f'Expected no warnings, got: {warnings}'
+
+
+def test_capacity_check_multiple_room_types_counts_correctly():
+    """Test that a multi-type room is counted for both types in slot availability check."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            # Only one room that does both types
+            rooms_data='Room,Capacity,Room Type\nFlexRoom,100,Lecture; Lab\n',
+            courses_data='Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                        'C1,Smith,40,Lecture,Lecture\n'
+                        'C2,Jones,40,Lecture,Lecture\n'
+                        'C3,Brown,40,Lab,Lab\n',
+            slots_data='Slot,Days,Start,End,Slot Type\n'
+                      'MWF-0830,MWF,08:30,09:20,Lecture\n'
+                      'M-0830,M,08:30,10:20,Lab\n',
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+
+        # Lecture: 2 courses, 1 room, 1 slot = 1 pair, need 2 -> warning
+        # Lab: 1 course, 1 room, 1 slot = OK
+        warnings = scheduler.capacity_check()
+        assert any("Lecture" in w and "2 courses" in w for w in warnings), \
+            f'Expected warning about Lecture, got: {warnings}'
+
+
 def run_all_tests():
     """Run all tests."""
     print('Running capacity_check tests...\n')
@@ -178,6 +233,12 @@ def run_all_tests():
 
     test_capacity_check_raises_without_data()
     print('✓ test_capacity_check_raises_without_data passed')
+
+    test_capacity_check_multiple_room_types()
+    print('✓ test_capacity_check_multiple_room_types passed')
+
+    test_capacity_check_multiple_room_types_counts_correctly()
+    print('✓ test_capacity_check_multiple_room_types_counts_correctly passed')
 
     print('\n' + '='*50)
     print('All capacity_check tests passed!')

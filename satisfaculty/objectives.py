@@ -121,7 +121,7 @@ class MinimizeClassesAfter(ObjectiveBase):
 
             # Check course type constraint
             if self.course_type:
-                if scheduler.course_types[course] != self.course_type:
+                if scheduler.course_slot_type[course] != self.course_type:
                     return False
 
             return True
@@ -218,7 +218,7 @@ class MaximizePreferredRooms(ObjectiveBase):
 
             # Check course type constraint
             if self.course_type:
-                if scheduler.course_types[course] != self.course_type:
+                if scheduler.course_slot_type[course] != self.course_type:
                     return False
 
             return True
@@ -274,7 +274,7 @@ class MinimizePreferredRooms(ObjectiveBase):
                     return False
 
             if self.course_type:
-                if scheduler.course_types[course] != self.course_type:
+                if scheduler.course_slot_type[course] != self.course_type:
                     return False
 
             return True
@@ -332,7 +332,7 @@ class MaximizeBackToBackCourses(ObjectiveBase):
         # Group time slots by slot type (+ days if requested)
         groups = {}
         for slot in scheduler.time_slots:
-            slot_type = scheduler.slot_types[slot]
+            slot_type = scheduler.slot_type[slot]
             if self.same_days:
                 days_key = tuple(sorted(scheduler.slot_days[slot]))
                 key = (slot_type, days_key)

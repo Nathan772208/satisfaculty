@@ -195,3 +195,50 @@ class NoCourseOverlap(ConstraintBase):
                 )
                 count += 1
         return count
+
+
+class SameTimeSlot(ConstraintBase):
+    """Forces a specified list of courses to be scheduled in the same time slot."""
+
+    _instance_count = 0
+
+    def __init__(self, courses: list[str], name: str | None = None):
+        self.courses = list(courses)
+        SameTimeSlot._instance_count += 1
+        self._id = SameTimeSlot._instance_count
+        display_name = name if name else ', '.join(courses)
+        super().__init__(name=f"Same time slot for courses ({display_name})")
+
+    def apply(self, scheduler) -> int:
+        if len(self.courses) < 2:
+            return 0
+
+        count = 0
+        first_course = self.courses[0]
+
+        # For each time slot, if the first course is assigned to it,
+        # then all other courses must also be assigned to that time slot
+        for time_slot in scheduler.time_slots:
+            first_keys = filter_keys(scheduler.keys, course=first_course, time_slot=time_slot)
+            if not first_keys:
+                continue
+
+            # Sum of first course's assignments to this time slot (across all rooms)
+            first_sum = lpSum(scheduler.x[k] for k in first_keys)
+
+            for other_course in self.courses[1:]:
+                other_keys = filter_keys(scheduler.keys, course=other_course, time_slot=time_slot)
+                if not other_keys:
+                    continue
+
+                # Sum of other course's assignments to this time slot (across all rooms)
+                other_sum = lpSum(scheduler.x[k] for k in other_keys)
+
+                # If first course is in this slot, other course must be too
+                scheduler.prob += (
+                    first_sum == other_sum,
+                    f"same_time_slot_{self._id}_{first_course}_{other_course}_{time_slot}"
+                )
+                count += 1
+
+        return count

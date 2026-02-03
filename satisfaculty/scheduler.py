@@ -15,6 +15,13 @@ from .objective_base import ObjectiveBase
 from .constraint_base import ConstraintBase
 
 
+def parse_instructors(instructor_str: str) -> List[str]:
+    """Parse semicolon-separated instructor string into list."""
+    if pd.isna(instructor_str) or not str(instructor_str).strip():
+        return []
+    return [name.strip() for name in str(instructor_str).split(';') if name.strip()]
+
+
 # Sentinel value for "match all" in filter_keys
 ALL = object()
 
@@ -329,7 +336,17 @@ class InstructorScheduler:
         self.courses = list(self.courses_df['Course'])
         self.rooms = list(self.rooms_df['Room'])
         self.time_slots = list(self.time_slots_df['Slot'])
-        self.instructors = list(self.courses_df['Instructor'].unique())
+
+        # Parse instructors for each course (supports multiple instructors per course)
+        self.course_instructors = {}
+        for _, row in self.courses_df.iterrows():
+            self.course_instructors[row['Course']] = parse_instructors(row['Instructor'])
+
+        # Extract unique instructors from all courses
+        all_instructors = set()
+        for instructors in self.course_instructors.values():
+            all_instructors.update(instructors)
+        self.instructors = list(all_instructors)
 
         # Create dictionaries for enrollments and capacities
         self.enrollments = dict(zip(self.courses_df['Course'], self.courses_df['Enrollment']))
@@ -347,7 +364,7 @@ class InstructorScheduler:
         self.a = {}
         for instructor in self.instructors:
             for course in self.courses:
-                if instructor in self.courses_df[self.courses_df['Course'] == course]['Instructor'].values:
+                if instructor in self.course_instructors[course]:
                     self.a[(instructor, course)] = 1
                 else:
                     self.a[(instructor, course)] = 0

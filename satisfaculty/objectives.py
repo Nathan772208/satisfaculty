@@ -58,10 +58,7 @@ class MinimizeClassesBefore(ObjectiveBase):
 
             # Check instructor constraint
             if self.instructor:
-                course_instructor = scheduler.courses_df[
-                    scheduler.courses_df['Course'] == course
-                ]['Instructor'].values[0]
-                if course_instructor != self.instructor:
+                if self.instructor not in scheduler.course_instructors[course]:
                     return False
 
             return True
@@ -119,10 +116,7 @@ class MinimizeClassesAfter(ObjectiveBase):
 
             # Check instructor constraint
             if self.instructor:
-                course_instructor = scheduler.courses_df[
-                    scheduler.courses_df['Course'] == course
-                ]['Instructor'].values[0]
-                if course_instructor != self.instructor:
+                if self.instructor not in scheduler.course_instructors[course]:
                     return False
 
             # Check course type constraint
@@ -219,10 +213,7 @@ class MaximizePreferredRooms(ObjectiveBase):
 
             # Check instructor constraint
             if self.instructor:
-                course_instructor = scheduler.courses_df[
-                    scheduler.courses_df['Course'] == course
-                ]['Instructor'].values[0]
-                if course_instructor != self.instructor:
+                if self.instructor not in scheduler.course_instructors[course]:
                     return False
 
             # Check course type constraint
@@ -279,10 +270,7 @@ class MinimizePreferredRooms(ObjectiveBase):
                 return False
 
             if self.instructor:
-                course_instructor = scheduler.courses_df[
-                    scheduler.courses_df['Course'] == course
-                ]['Instructor'].values[0]
-                if course_instructor != self.instructor:
+                if self.instructor not in scheduler.course_instructors[course]:
                     return False
 
             if self.course_type:

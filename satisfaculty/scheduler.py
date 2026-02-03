@@ -15,11 +15,11 @@ from .objective_base import ObjectiveBase
 from .constraint_base import ConstraintBase
 
 
-def parse_instructors(instructor_str: str) -> List[str]:
-    """Parse semicolon-separated instructor string into list."""
-    if pd.isna(instructor_str) or not str(instructor_str).strip():
+def parse_semicolon_list(value: str) -> List[str]:
+    """Parse semicolon-separated string into list of stripped values."""
+    if pd.isna(value) or not str(value).strip():
         return []
-    return [name.strip() for name in str(instructor_str).split(';') if name.strip()]
+    return [item.strip() for item in str(value).split(';') if item.strip()]
 
 
 # Sentinel value for "match all" in filter_keys
@@ -237,8 +237,17 @@ class InstructorScheduler:
             .to_dict()
         )
 
-        # Count rooms per room type
-        room_type_counts = self.rooms_df['Room Type'].value_counts().to_dict()
+        # Parse room types for each room (rooms can have multiple types)
+        room_type_lists = {
+            row['Room']: parse_semicolon_list(row['Room Type'])
+            for _, row in self.rooms_df.iterrows()
+        }
+
+        # Count rooms per room type (a room with "Lecture; Lab" counts for both)
+        room_type_counts = {}
+        for room_types in room_type_lists.values():
+            for rt in room_types:
+                room_type_counts[rt] = room_type_counts.get(rt, 0) + 1
 
         # Check each (slot type, room type) combination that has courses
         for (slot_type, room_type), course_count in course_type_counts.items():
@@ -263,9 +272,9 @@ class InstructorScheduler:
                 (self.courses_df['Room Type'] == room_type)
             ].sort_values('Enrollment', ascending=False)
 
-            # Get rooms of this type, sorted by capacity descending
+            # Get rooms that support this type, sorted by capacity descending
             rooms_of_type = self.rooms_df[
-                self.rooms_df['Room Type'] == room_type
+                self.rooms_df['Room'].apply(lambda r: room_type in room_type_lists[r])
             ].sort_values('Capacity', ascending=False)
 
             if rooms_of_type.empty:
@@ -340,7 +349,7 @@ class InstructorScheduler:
         # Parse instructors for each course (supports multiple instructors per course)
         self.course_instructors = {}
         for _, row in self.courses_df.iterrows():
-            self.course_instructors[row['Course']] = parse_instructors(row['Instructor'])
+            self.course_instructors[row['Course']] = parse_semicolon_list(row['Instructor'])
 
         # Extract unique instructors from all courses
         all_instructors = set()
@@ -353,12 +362,15 @@ class InstructorScheduler:
         self.capacities = dict(zip(self.rooms_df['Room'], self.rooms_df['Capacity']))
 
         # Create dictionaries for course and time slot types
-        self.course_slot_types = dict(zip(self.courses_df['Course'], self.courses_df['Slot Type']))
-        self.slot_types = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Slot Type']))
+        self.course_slot_type = dict(zip(self.courses_df['Course'], self.courses_df['Slot Type']))
+        self.slot_type = dict(zip(self.time_slots_df['Slot'], self.time_slots_df['Slot Type']))
 
         # Create dictionaries for course and room types
-        self.course_room_types = dict(zip(self.courses_df['Course'], self.courses_df['Room Type']))
-        self.room_types = dict(zip(self.rooms_df['Room'], self.rooms_df['Room Type']))
+        # Courses have a single room type, rooms can have multiple types (semicolon-separated)
+        self.course_room_type = dict(zip(self.courses_df['Course'], self.courses_df['Room Type']))
+        self.room_types = {}
+        for _, row in self.rooms_df.iterrows():
+            self.room_types[row['Room']] = parse_semicolon_list(row['Room Type'])
 
         # Create matrix a; a[(instructor, course)] = 1 if instructor teaches course
         self.a = {}
@@ -372,14 +384,14 @@ class InstructorScheduler:
         # Create binary decision variables using LpVariable.dicts
         # x[(course, room, time)] = 1 if course is assigned to room at time slot
         # Only create variables where course slot type matches time slot type
-        # and course room type matches room type
+        # and course room type is in the room's list of types
         self.keys = set([
             (course, room, t)
             for course in self.courses
             for room in self.rooms
             for t in self.time_slots
-            if self.course_slot_types[course] == self.slot_types[t]
-            and self.course_room_types[course] == self.room_types[room]
+            if self.course_slot_type[course] == self.slot_type[t]
+            and self.course_room_type[course] in self.room_types[room]
         ])
         self.x = LpVariable.dicts("x", list(self.keys), cat='Binary')
 

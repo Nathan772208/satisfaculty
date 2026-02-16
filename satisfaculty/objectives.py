@@ -25,19 +25,22 @@ class MinimizeClassesBefore(ObjectiveBase):
         self,
         time: str,
         instructor: Optional[str] = None,
+        course: Optional[str] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
     ):
         """
         Args:
             time: Time in HH:MM format (e.g., "9:00")
-            instructor: If specified, only count this instructor's classes
+            instructor: If specified, only count this instructor's 
+            course: If specified, only count this course
             sense: 'minimize' or 'maximize'
             tolerance: Fractional tolerance for lexicographic constraint
         """
         self.time = time
         self.time_minutes = time_to_minutes(time)
         self.instructor = instructor
+        self.course = course
 
         name_parts = [f"classes before {time}"]
         if instructor:
@@ -61,6 +64,11 @@ class MinimizeClassesBefore(ObjectiveBase):
                 if self.instructor not in scheduler.course_instructors[course]:
                     return False
 
+            # Check course constraint
+            if self.course:
+                if course != self.course:
+                    return False
+
             return True
 
         filtered = filter_keys(scheduler.keys, predicate=matches_criteria)
@@ -78,6 +86,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         self,
         time: str,
         instructor: Optional[str] = None,
+        course: Optional[str] = None,
         course_type: Optional[str] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
@@ -93,11 +102,14 @@ class MinimizeClassesAfter(ObjectiveBase):
         self.time = time
         self.time_minutes = time_to_minutes(time)
         self.instructor = instructor
+        self.course = course
         self.course_type = course_type
 
         name_parts = [f"classes after {time}"]
         if instructor:
             name_parts.append(f"for {instructor}")
+        if course:
+            name_parts.append(f"({course})")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -117,6 +129,11 @@ class MinimizeClassesAfter(ObjectiveBase):
             # Check instructor constraint
             if self.instructor:
                 if self.instructor not in scheduler.course_instructors[course]:
+                    return False
+                
+            # Check course constraint
+            if self.course:
+                if course != self.course:
                     return False
 
             # Check course type constraint

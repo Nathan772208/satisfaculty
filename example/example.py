@@ -25,7 +25,7 @@ scheduler.add_constraints([
 
 # Define lexicographic optimization objectives (in priority order)
 objectives = [
-    MinimizeClassesAfter('17:00'),
+    MinimizeMinutesAfter('17:00'),
     MinimizeClassesBefore('9:00'),   
 ]
 

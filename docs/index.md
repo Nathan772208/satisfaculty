@@ -1,6 +1,8 @@
 # satisfaculty
 
-A python course scheduling optimization tool using integer linear programming.
+Are you a faculty member or administrator trying to create a schedule that obeys tricky constraints and satisfies many objectives? Satisfaculty can help! `satisfaculty` is a python package that uses lexicographic mixed-integer linear programming to create academic schedules like the one below:
+
+![Example schedule output](schedule_visual.png)
 
 ## Installation
 
@@ -25,16 +27,19 @@ scheduler.add_constraints([
     NoInstructorOverlap(),
     NoRoomOverlap(),
     RoomCapacity(),
+    ForceRooms(), # You can always manually override!
+    ForceTimeSlots()
 ])
 
-objectives = [MinimizeClassesBefore("9:00")]
+objectives = [
+    MinimizeMinutesAfter('17:00'),
+    MinimizeClassesBefore("9:00"),
+]
 scheduler.lexicographic_optimize(objectives)
 scheduler.visualize_schedule()
 ```
 
-This will output a complete schedule:
-
-![Example schedule output](schedule_visual.png)
+This will output the schedule above.
 
 ## Example
 

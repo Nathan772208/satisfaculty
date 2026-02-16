@@ -25,7 +25,7 @@ class MinimizeClassesBefore(ObjectiveBase):
         self,
         time: str,
         instructor: Optional[str] = None,
-        course: Optional[str] = None,
+        courses: Optional[list[str]] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
     ):
@@ -40,7 +40,7 @@ class MinimizeClassesBefore(ObjectiveBase):
         self.time = time
         self.time_minutes = time_to_minutes(time)
         self.instructor = instructor
-        self.course = course
+        self.courses = set(courses) if courses else None
 
         name_parts = [f"classes before {time}"]
         if instructor:
@@ -65,9 +65,8 @@ class MinimizeClassesBefore(ObjectiveBase):
                     return False
 
             # Check course constraint
-            if self.course:
-                if course != self.course:
-                    return False
+            if self.courses and course not in self.courses:
+                return False
 
             return True
 
@@ -86,7 +85,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         self,
         time: str,
         instructor: Optional[str] = None,
-        course: Optional[str] = None,
+        courses: Optional[list[str]] = None,
         course_type: Optional[str] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
@@ -102,14 +101,14 @@ class MinimizeClassesAfter(ObjectiveBase):
         self.time = time
         self.time_minutes = time_to_minutes(time)
         self.instructor = instructor
-        self.course = course
+        self.courses = set(courses) if courses else None
         self.course_type = course_type
 
         name_parts = [f"classes after {time}"]
         if instructor:
             name_parts.append(f"for {instructor}")
-        if course:
-            name_parts.append(f"({course})")
+        if courses:
+            name_parts.append(f"for {len(courses)} courses")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -132,9 +131,8 @@ class MinimizeClassesAfter(ObjectiveBase):
                     return False
                 
             # Check course constraint
-            if self.course:
-                if course != self.course:
-                    return False
+            if self.courses and course not in self.courses:
+                return False
 
             # Check course type constraint
             if self.course_type:

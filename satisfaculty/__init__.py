@@ -19,6 +19,7 @@ from .constraints import (
     AvoidRoomsForCourseType,
     ForceRooms,
     ForceTimeSlots,
+    InstructorTravelBuffer,
 )
 from .visualize_schedule import visualize_schedule
 
@@ -41,6 +42,7 @@ __all__ = [
     "AvoidRoomsForCourseType",
     "ForceRooms",
     "ForceTimeSlots",
+    "InstructorTravelBuffer",
     # Utilities
     "visualize_schedule",
 ]

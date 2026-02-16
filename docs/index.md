@@ -2,7 +2,7 @@
 
 Are you a faculty member or administrator trying to create a schedule that obeys tricky constraints and satisfies many objectives? Satisfaculty can help! `satisfaculty` is a python package that uses lexicographic mixed-integer linear programming to create academic schedules like the one below:
 
-Noter for CU Boulder AERO Faculty: the actual optimization for Fall 2026 can be found [on sharepoint](https://o365coloradoedu.sharepoint.com/:u:/r/sites/AEROENGR-Curriculum/Shared%20Documents/Course%20Scheduling%20Documents/2026-27%20Scheduling/Fall%202026/Fa26%20Algorithm%20Outputs/Latest%20Schedule/optimize.py?csf=1&web=1&e=aUkVqW)
+Note for CU Boulder AERO Faculty: the actual optimization for Fall 2026 can be found [on sharepoint](https://o365coloradoedu.sharepoint.com/:u:/r/sites/AEROENGR-Curriculum/Shared%20Documents/Course%20Scheduling%20Documents/2026-27%20Scheduling/Fall%202026/Fa26%20Algorithm%20Outputs/Latest%20Schedule/optimize.py?csf=1&web=1&e=aUkVqW)
 
 ![Example schedule output](schedule_visual.png)
 

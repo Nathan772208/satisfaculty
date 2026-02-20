@@ -94,6 +94,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         Args:
             time: Time in HH:MM format (e.g., "16:00")
             instructor: If specified, only count this instructor's classes
+            courses: If specified only count this list of courses
             course_type: If specified, only count this type ('Lecture' or 'Lab')
             sense: 'minimize' or 'maximize'
             tolerance: Fractional tolerance for lexicographic constraint
@@ -194,6 +195,7 @@ class MaximizePreferredRooms(ObjectiveBase):
         self,
         preferred_rooms: List[str],
         instructor: Optional[str] = None,
+        courses: Optional[list[str]] = None,
         course_type: Optional[str] = None,
         tolerance: float = 0.0
     ):
@@ -201,16 +203,20 @@ class MaximizePreferredRooms(ObjectiveBase):
         Args:
             preferred_rooms: List of room names to prefer
             instructor: If specified, only for this instructor's classes
+            courses: If specified, only used for this list of courses
             course_type: If specified, only for this type ('Lecture' or 'Lab')
             tolerance: Fractional tolerance for lexicographic constraint
         """
         self.preferred_rooms = set(preferred_rooms)
         self.instructor = instructor
+        self.courses = set(courses) if courses else None
         self.course_type = course_type
 
         name_parts = [f"preferred rooms ({', '.join(preferred_rooms)})"]
         if instructor:
             name_parts.append(f"for {instructor}")
+        if courses:
+            name_parts.append(f"({len(courses)} courses)")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -230,7 +236,10 @@ class MaximizePreferredRooms(ObjectiveBase):
             if self.instructor:
                 if self.instructor not in scheduler.course_instructors[course]:
                     return False
-
+    
+            if self.courses and course not in self.courses:
+                return False
+                
             # Check course type constraint
             if self.course_type:
                 if scheduler.course_slot_type[course] != self.course_type:
@@ -253,6 +262,7 @@ class MinimizePreferredRooms(ObjectiveBase):
         self,
         preferred_rooms: List[str],
         instructor: Optional[str] = None,
+        courses: Optional[list[str]] = None,
         course_type: Optional[str] = None,
         tolerance: float = 0.0
     ):
@@ -260,16 +270,20 @@ class MinimizePreferredRooms(ObjectiveBase):
         Args:
             preferred_rooms: List of room names to avoid
             instructor: If specified, only for this instructor's classes
+            courses: If specified, only for this list of courses
             course_type: If specified, only for this type ('Lecture' or 'Lab')
             tolerance: Fractional tolerance for lexicographic constraint
         """
         self.preferred_rooms = set(preferred_rooms)
         self.instructor = instructor
+        self.courses = set(courses) if courses else None
         self.course_type = course_type
 
         name_parts = [f"preferred rooms ({', '.join(preferred_rooms)})"]
         if instructor:
             name_parts.append(f"for {instructor}")
+        if courses:
+            name_parts.append(f"({len(courses)} courses)")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -287,6 +301,9 @@ class MinimizePreferredRooms(ObjectiveBase):
             if self.instructor:
                 if self.instructor not in scheduler.course_instructors[course]:
                     return False
+                
+            if self.courses and course not in self.courses:
+                return False
 
             if self.course_type:
                 if scheduler.course_slot_type[course] != self.course_type:

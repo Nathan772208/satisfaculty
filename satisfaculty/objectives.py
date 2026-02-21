@@ -194,6 +194,7 @@ class MaximizePreferredRooms(ObjectiveBase):
         self,
         preferred_rooms: List[str],
         instructor: Optional[str] = None,
+        courses: Optional[List[str]] = None,
         course_type: Optional[str] = None,
         tolerance: float = 0.0
     ):
@@ -201,16 +202,20 @@ class MaximizePreferredRooms(ObjectiveBase):
         Args:
             preferred_rooms: List of room names to prefer
             instructor: If specified, only for this instructor's classes
+            courses: If specified, only for these specific courses
             course_type: If specified, only for this type ('Lecture' or 'Lab')
             tolerance: Fractional tolerance for lexicographic constraint
         """
         self.preferred_rooms = set(preferred_rooms)
         self.instructor = instructor
+        self.courses = set(courses) if courses else None
         self.course_type = course_type
 
         name_parts = [f"preferred rooms ({', '.join(preferred_rooms)})"]
         if instructor:
             name_parts.append(f"for {instructor}")
+        if courses:
+            name_parts.append(f"for {len(courses)} courses")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -230,6 +235,10 @@ class MaximizePreferredRooms(ObjectiveBase):
             if self.instructor:
                 if self.instructor not in scheduler.course_instructors[course]:
                     return False
+
+            # Check courses constraint
+            if self.courses and course not in self.courses:
+                return False
 
             # Check course type constraint
             if self.course_type:

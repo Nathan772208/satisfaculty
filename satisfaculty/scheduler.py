@@ -78,17 +78,20 @@ def filter_keys(
 
 
 class InstructorScheduler:
-    def __init__(self, solver_verbose: bool = False):
+    def __init__(self, solver_verbose: bool = False, objective_timeout: float | None = None):
         """
         Initialize the instructor scheduler.
 
         Args:
             solver_verbose: If True, display solver output during optimization.
                            If False (default), solver runs silently.
+            objective_timeout: Maximum seconds to spend on each objective. If None,
+                              no timeout is applied.
         """
         self.time_slots_df = None
         self._constraints = []
         self.solver_verbose = solver_verbose
+        self.objective_timeout = objective_timeout
 
     def add_constraints(self, constraints: List[ConstraintBase]):
         """
@@ -454,18 +457,31 @@ class InstructorScheduler:
             return None
 
         # Solve the problem
-        solver = PULP_CBC_CMD(msg=1 if self.solver_verbose else 0)
+        solver = PULP_CBC_CMD(
+            msg=1 if self.solver_verbose else 0,
+            timeLimit=self.objective_timeout
+        )
         self.prob.solve(solver)
 
         # Check if the problem is solved
-        if LpStatus[self.prob.status] != 'Optimal':
-            print("No solution found")
+        status = LpStatus[self.prob.status]
+        if status == 'Optimal':
+            self._extract_schedule()
+            return self.schedule
+        elif status == 'Not Solved':
+            # Timeout case - check if we have a feasible solution
+            if any(self.x[k].varValue == 1 for k in self.keys):
+                print("Timeout reached, using best solution found")
+                self._extract_schedule()
+                return self.schedule
+            else:
+                print("No solution found within timeout")
+                self.schedule = None
+                return None
+        else:
+            print(f"No solution found (status: {status})")
             self.schedule = None
-            return
-
-        # Extract schedule from solution
-        self._extract_schedule()
-        return self.schedule
+            return None
 
     def print_violated_constraints(self):
         """Print the names of constraints that are not satisfied."""
@@ -521,7 +537,10 @@ class InstructorScheduler:
 
         if not objectives:
             print("Warning: No objectives specified, using constraint satisfaction only")
-            solver = PULP_CBC_CMD(msg=1 if self.solver_verbose else 0)
+            solver = PULP_CBC_CMD(
+                msg=1 if self.solver_verbose else 0,
+                timeLimit=self.objective_timeout
+            )
             self.prob.solve(solver)
             if LpStatus[self.prob.status] == 'Optimal':
                 self._extract_schedule()
@@ -534,60 +553,94 @@ class InstructorScheduler:
         print(f"\n=== Lexicographic Optimization: {len(objectives)} objectives ===\n")
 
         # Create solver
-        solver = PULP_CBC_CMD(msg=1 if self.solver_verbose else 0)
+        solver = PULP_CBC_CMD(
+            msg=1 if self.solver_verbose else 0,
+            timeLimit=self.objective_timeout
+        )
 
-        # Optimize each objective in order
-        for i, objective in enumerate(objectives):
-            print(f"[{i+1}/{len(objectives)}] Optimizing: {objective.name}")
+        # Track best schedule from completed objectives
+        best_schedule = None
 
-            # Set objective function
-            if objective.sense == 'minimize':
-                self.prob.sense = LpMinimize
-                self.prob.setObjective(objective.evaluate(self))
-            else:
-                self.prob.sense = LpMaximize
-                self.prob.setObjective(objective.evaluate(self))
+        try:
+            # Optimize each objective in order
+            for i, objective in enumerate(objectives):
+                print(f"[{i+1}/{len(objectives)}] Optimizing: {objective.name}")
 
-            self.prob.solve(solver)
-
-            # Check solution status
-            status = LpStatus[self.prob.status]
-            if status != 'Optimal':
-                print(f"  ✗ No solution found (status: {status})")
-                self.schedule = None
-                return None
-
-            # Get optimal value
-            optimal_value = value(self.prob.objective)
-            if optimal_value is None:
-                optimal_value = 0.0
-            print(f"  ✓ Optimal value: {optimal_value:.2f}")
-
-            # Add constraint to lock this objective (with tolerance)
-            # Don't constrain the last objective
-            if i < len(objectives) - 1:
-                tolerance = objective.tolerance
+                # Set objective function
                 if objective.sense == 'minimize':
-                    bound = optimal_value * (1 + tolerance)
-                    self.prob += (
-                        objective.evaluate(self) <= bound,
-                        f"lock_objective_{i}"
-                    )
-                    if tolerance > 0:
-                        print(f"    Constraining: value ≤ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
+                    self.prob.sense = LpMinimize
+                    self.prob.setObjective(objective.evaluate(self))
+                else:
+                    self.prob.sense = LpMaximize
+                    self.prob.setObjective(objective.evaluate(self))
+
+                self.prob.solve(solver)
+
+                # Check solution status
+                status = LpStatus[self.prob.status]
+                if status == 'Optimal':
+                    pass  # Continue normally
+                elif status == 'Not Solved':
+                    # Timeout case - check if we have a feasible solution
+                    if any(self.x[k].varValue == 1 for k in self.keys):
+                        print(f"  ⏱ Timeout reached, using best solution found")
                     else:
-                        print(f"    Constraining: value ≤ {bound:.2f}")
-                else:  # maximize
-                    bound = optimal_value * (1 - tolerance)
-                    self.prob += (
-                        objective.evaluate(self) >= bound,
-                        f"lock_objective_{i}"
-                    )
-                    if tolerance > 0:
-                        print(f"    Constraining: value ≥ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
-                    else:
-                        print(f"    Constraining: value ≥ {bound:.2f}")
-            print()
+                        print(f"  ✗ No solution found within timeout")
+                        self.schedule = None
+                        return None
+                else:
+                    print(f"  ✗ No solution found (status: {status})")
+                    self.schedule = None
+                    return None
+
+                # Get optimal value
+                optimal_value = value(self.prob.objective)
+                if optimal_value is None:
+                    optimal_value = 0.0
+                if status == 'Optimal':
+                    print(f"  ✓ Optimal value: {optimal_value:.2f}")
+                else:
+                    print(f"  ~ Best value: {optimal_value:.2f}")
+
+                # Extract and save intermediate schedule after each objective
+                self._extract_schedule()
+                best_schedule = self.schedule.copy()
+
+                # Add constraint to lock this objective (with tolerance)
+                # Don't constrain the last objective
+                if i < len(objectives) - 1:
+                    tolerance = objective.tolerance
+                    if objective.sense == 'minimize':
+                        bound = optimal_value * (1 + tolerance)
+                        self.prob += (
+                            objective.evaluate(self) <= bound,
+                            f"lock_objective_{i}"
+                        )
+                        if tolerance > 0:
+                            print(f"    Constraining: value ≤ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
+                        else:
+                            print(f"    Constraining: value ≤ {bound:.2f}")
+                    else:  # maximize
+                        bound = optimal_value * (1 - tolerance)
+                        self.prob += (
+                            objective.evaluate(self) >= bound,
+                            f"lock_objective_{i}"
+                        )
+                        if tolerance > 0:
+                            print(f"    Constraining: value ≥ {bound:.2f} (tolerance: {tolerance*100:.1f}%)")
+                        else:
+                            print(f"    Constraining: value ≥ {bound:.2f}")
+                print()
+
+        except KeyboardInterrupt:
+            print("\n\n⚠ Optimization interrupted by user")
+            if best_schedule is not None:
+                print("Returning best schedule from completed objectives")
+                self.schedule = best_schedule
+                return self.schedule
+            else:
+                print("No complete schedule available yet")
+                return None
 
         # Extract final schedule
         self._extract_schedule()

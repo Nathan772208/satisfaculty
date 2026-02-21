@@ -582,9 +582,7 @@ class InstructorScheduler:
                     pass  # Continue normally
                 elif status == 'Not Solved':
                     # Timeout case - check if we have a feasible solution
-                    if any(self.x[k].varValue == 1 for k in self.keys):
-                        print(f"  ⏱ Timeout reached, using best solution found")
-                    else:
+                    if not any(self.x[k].varValue == 1 for k in self.keys):
                         print(f"  ✗ No solution found within timeout")
                         self.schedule = None
                         return None
@@ -600,7 +598,7 @@ class InstructorScheduler:
                 if status == 'Optimal':
                     print(f"  ✓ Optimal value: {optimal_value:.2f}")
                 else:
-                    print(f"  ~ Best value: {optimal_value:.2f}")
+                    print(f"  ⏱ Timed out at value: {optimal_value:.2f}")
 
                 # Extract and save intermediate schedule after each objective
                 self._extract_schedule()

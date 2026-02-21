@@ -289,7 +289,7 @@ class MaximizeBackToBackCourses(ObjectiveBase):
 
     This objective rewards adjacent time slots (by start time) that are
     assigned to different courses in the specified list. Adjacency is
-    evaluated within the same slot type (and optionally the same days set).
+    evaluated within the same slot type and same days set.
     """
 
     _instance_count = 0
@@ -297,20 +297,16 @@ class MaximizeBackToBackCourses(ObjectiveBase):
     def __init__(
         self,
         courses: List[str],
-        same_days: bool = True,
         same_room: bool = False,
         tolerance: float = 0.0
     ):
         """
         Args:
             courses: List of course names to cluster back-to-back.
-            same_days: If True, only count adjacency within the same days set
-                       (e.g., MWF with MWF). If False, only slot type is matched.
             same_room: If True, only count adjacency when both courses are in the same room.
             tolerance: Fractional tolerance for lexicographic constraint.
         """
         self.courses = list(courses)
-        self.same_days = same_days
         self.same_room = same_room
         self._built = False
         self._objective_expr = None
@@ -329,15 +325,12 @@ class MaximizeBackToBackCourses(ObjectiveBase):
         if missing:
             raise ValueError(f"Unknown course(s) in MaximizeBackToBackCourses: {missing}")
 
-        # Group time slots by slot type (+ days if requested)
+        # Group time slots by slot type and days set
         groups = {}
         for slot in scheduler.time_slots:
             slot_type = scheduler.slot_type[slot]
-            if self.same_days:
-                days_key = tuple(sorted(scheduler.slot_days[slot]))
-                key = (slot_type, days_key)
-            else:
-                key = (slot_type,)
+            days_key = tuple(sorted(scheduler.slot_days[slot]))
+            key = (slot_type, days_key)
             groups.setdefault(key, []).append(slot)
 
         # Build adjacency list of consecutive (slot1, slot2) pairs

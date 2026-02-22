@@ -29,6 +29,11 @@ myst_enable_extensions = [
 ]
 
 html_theme = "furo"
+html_theme_options = {
+    "source_repository": "https://github.com/zsunberg/satisfaculty",
+    "source_branch": "master",
+    "source_directory": "docs/",
+}
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"

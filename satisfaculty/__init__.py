@@ -10,6 +10,7 @@ from .objectives import (
     MaximizeBackToBackCourses,
     MinimizeBackToBack,
     TargetFill,
+    MinimizeScheduleChanges,
     MinimizeTeachingDaysOver,
 )
 from .constraints import (
@@ -37,6 +38,7 @@ __all__ = [
     "MaximizeBackToBackCourses",
     "MinimizeBackToBack",
     "TargetFill",
+    "MinimizeScheduleChanges",
     "MinimizeTeachingDaysOver",
     # Constraints
     "AssignAllCourses",

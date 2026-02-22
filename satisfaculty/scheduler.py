@@ -656,13 +656,13 @@ class InstructorScheduler:
             print("No schedule available. Please run optimize_schedule() first.")
 
     def save_schedule(self, filename: str = 'schedule.csv'):
-        """Save the optimized schedule to a CSV file."""
+        """Save the optimized schedule to a CSV file, sorted by course name."""
         if self.schedule is not None:
             import os
             dirname = os.path.dirname(filename)
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
-            self.schedule.to_csv(filename, index=False)
+            self.schedule.sort_values('Course').to_csv(filename, index=False)
             print(f"Schedule saved to {filename}")
         else:
             print("No schedule available to save. Please run optimize_schedule() first.")

@@ -41,6 +41,78 @@ def create_test_files(tmpdir, rooms_data, courses_data, slots_data):
     return rooms_file, courses_file, slots_file
 
 
+def test_minimize_classes_before_filters_by_days():
+    """Test that MinimizeClassesBefore only counts classes on specified days."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+            ),
+            # One MWF slot before 10:00 and one TTH slot before 10:00
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Minimize classes before 10:00 on M/W/F only
+        # Should prefer TTH-0900 (not on M/W/F) over MWF-0900 (on M/W/F)
+        result = scheduler.lexicographic_optimize([
+            MinimizeClassesBefore('10:00', days=['M', 'W', 'F']),
+        ])
+
+        assert result is not None
+        assert len(result) == 1
+        # Should pick TTH slot since it's not on M/W/F
+        assert result.iloc[0]['Days'] == 'TTH'
+
+
+def test_minimize_classes_after_filters_by_days():
+    """Test that MinimizeClassesAfter only counts classes on specified days."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+            ),
+            # One MWF slot after 16:00 and one TTH slot after 16:00
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-1600,MWF,16:00,16:50,Lecture\n'
+                'TTH-1600,TTH,16:00,16:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Minimize classes after 16:00 on M/W/F only
+        # Should prefer TTH-1600 (not on M/W/F) over MWF-1600 (on M/W/F)
+        result = scheduler.lexicographic_optimize([
+            MinimizeClassesAfter('16:00', days=['M', 'W', 'F']),
+        ])
+
+        assert result is not None
+        assert len(result) == 1
+        # Should pick TTH slot since it's not on M/W/F
+        assert result.iloc[0]['Days'] == 'TTH'
+
+
 def test_minimize_minutes_after_prefers_earlier_slot():
     """Test that MinimizeMinutesAfter prefers earlier time slots."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -373,6 +445,12 @@ def test_minimize_teaching_days_over_applies_to_all_when_no_instructors():
 def run_all_tests():
     """Run all tests."""
     print('Running objectives tests...\n')
+
+    test_minimize_classes_before_filters_by_days()
+    print('✓ test_minimize_classes_before_filters_by_days passed')
+
+    test_minimize_classes_after_filters_by_days()
+    print('✓ test_minimize_classes_after_filters_by_days passed')
 
     test_minimize_minutes_after_prefers_earlier_slot()
     print('✓ test_minimize_minutes_after_prefers_earlier_slot passed')

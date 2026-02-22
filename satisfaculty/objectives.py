@@ -26,14 +26,16 @@ class MinimizeClassesBefore(ObjectiveBase):
         time: str,
         instructor: Optional[str] = None,
         courses: Optional[list[str]] = None,
+        days: Optional[list[str]] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
     ):
         """
         Args:
             time: Time in HH:MM format (e.g., "9:00")
-            instructor: If specified, only count this instructor's 
-            course: If specified, only count this course
+            instructor: If specified, only count this instructor's classes
+            courses: If specified, only count these courses
+            days: If specified, only count classes on these days (e.g., ['M', 'W', 'F'])
             sense: 'minimize' or 'maximize'
             tolerance: Fractional tolerance for lexicographic constraint
         """
@@ -41,10 +43,13 @@ class MinimizeClassesBefore(ObjectiveBase):
         self.time_minutes = time_to_minutes(time)
         self.instructor = instructor
         self.courses = set(courses) if courses else None
+        self.days = set(days) if days else None
 
         name_parts = [f"classes before {time}"]
         if instructor:
             name_parts.append(f"for {instructor}")
+        if days:
+            name_parts.append(f"on {','.join(sorted(days))}")
 
         super().__init__(
             name=f"{sense.capitalize()} {' '.join(name_parts)}",
@@ -58,6 +63,12 @@ class MinimizeClassesBefore(ObjectiveBase):
             slot_start = scheduler.slot_start_minutes[time_slot]
             if slot_start >= self.time_minutes:
                 return False
+
+            # Check days constraint
+            if self.days:
+                slot_days = scheduler.slot_days[time_slot]
+                if not slot_days.intersection(self.days):
+                    return False
 
             # Check instructor constraint
             if self.instructor:
@@ -87,6 +98,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         instructor: Optional[str] = None,
         courses: Optional[list[str]] = None,
         course_type: Optional[str] = None,
+        days: Optional[list[str]] = None,
         sense: str = 'minimize',
         tolerance: float = 0.0
     ):
@@ -94,7 +106,9 @@ class MinimizeClassesAfter(ObjectiveBase):
         Args:
             time: Time in HH:MM format (e.g., "16:00")
             instructor: If specified, only count this instructor's classes
+            courses: If specified, only count these courses
             course_type: If specified, only count this type ('Lecture' or 'Lab')
+            days: If specified, only count classes on these days (e.g., ['M', 'W', 'F'])
             sense: 'minimize' or 'maximize'
             tolerance: Fractional tolerance for lexicographic constraint
         """
@@ -103,6 +117,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         self.instructor = instructor
         self.courses = set(courses) if courses else None
         self.course_type = course_type
+        self.days = set(days) if days else None
 
         name_parts = [f"classes after {time}"]
         if instructor:
@@ -111,6 +126,8 @@ class MinimizeClassesAfter(ObjectiveBase):
             name_parts.append(f"for {len(courses)} courses")
         if course_type:
             name_parts.append(f"({course_type})")
+        if days:
+            name_parts.append(f"on {','.join(sorted(days))}")
 
         super().__init__(
             name=f"{sense.capitalize()} {' '.join(name_parts)}",
@@ -125,11 +142,17 @@ class MinimizeClassesAfter(ObjectiveBase):
             if slot_end <= self.time_minutes:
                 return False
 
+            # Check days constraint
+            if self.days:
+                slot_days = scheduler.slot_days[time_slot]
+                if not slot_days.intersection(self.days):
+                    return False
+
             # Check instructor constraint
             if self.instructor:
                 if self.instructor not in scheduler.course_instructors[course]:
                     return False
-                
+
             # Check course constraint
             if self.courses and course not in self.courses:
                 return False

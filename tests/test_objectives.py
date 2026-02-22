@@ -20,8 +20,10 @@ from satisfaculty import (
     MinimizeClassesAfter,
     MinimizePreferredRooms,
     TargetFill,
+    MinimizeScheduleChanges,
     MinimizeTeachingDaysOver,
 )
+import pandas as pd
 
 
 def create_test_files(tmpdir, rooms_data, courses_data, slots_data):
@@ -442,6 +444,150 @@ def test_minimize_teaching_days_over_applies_to_all_when_no_instructors():
         assert all(days == 'MWF' for days in days_list), f"Expected all MWF, got {days_list}"
 
 
+def test_minimize_schedule_changes_keeps_previous_assignments():
+    """Test that MinimizeScheduleChanges prefers keeping previous assignments."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\nRoom2,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Jones,50,Lecture,Lecture\n'
+            ),
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'MWF-1100,MWF,11:00,11:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Create a previous schedule
+        previous_schedule = pd.DataFrame([
+            {'Course': 'C1', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},
+            {'Course': 'C2', 'Room': 'Room2', 'Days': 'MWF', 'Start': '11:00'},
+        ])
+
+        # Optimize with MinimizeScheduleChanges
+        result = scheduler.lexicographic_optimize([
+            MinimizeScheduleChanges(previous_schedule),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Should keep the previous assignments
+        c1_result = result[result['Course'] == 'C1'].iloc[0]
+        c2_result = result[result['Course'] == 'C2'].iloc[0]
+
+        assert c1_result['Room'] == 'Room1'
+        assert c1_result['Start'] == '09:00'
+        assert c2_result['Room'] == 'Room2'
+        assert c2_result['Start'] == '11:00'
+
+
+def test_minimize_schedule_changes_with_weights():
+    """Test that MinimizeScheduleChanges respects weights."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Jones,50,Lecture,Lecture\n'
+            ),
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Previous schedule: both on MWF
+        previous_schedule = pd.DataFrame([
+            {'Course': 'C1', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},
+            {'Course': 'C2', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},  # Same slot (infeasible)
+        ])
+
+        # C1 has higher weight, so it should keep its assignment
+        # C2 should move to TTH
+        result = scheduler.lexicographic_optimize([
+            MinimizeScheduleChanges(previous_schedule, weights={'C1': 10.0, 'C2': 1.0}),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        c1_result = result[result['Course'] == 'C1'].iloc[0]
+        c2_result = result[result['Course'] == 'C2'].iloc[0]
+
+        # C1 should keep MWF (higher weight)
+        assert c1_result['Days'] == 'MWF'
+        # C2 should move to TTH (lower weight)
+        assert c2_result['Days'] == 'TTH'
+
+
+def test_minimize_schedule_changes_from_file_with_weight_column():
+    """Test that MinimizeScheduleChanges can load from file with weight column."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Jones,50,Lecture,Lecture\n'
+            ),
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+            ),
+        )
+
+        # Create previous schedule file with "Change Weight" column (default)
+        prev_schedule_file = os.path.join(tmpdir, 'previous_schedule.csv')
+        with open(prev_schedule_file, 'w') as f:
+            f.write('Course,Room,Days,Start,End,Instructor,Enrollment,Note,Change Weight\n')
+            f.write('C1,Room1,MWF,09:00,09:50,Smith,50,,10.0\n')
+            f.write('C2,Room1,MWF,09:00,09:50,Jones,50,,1.0\n')
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # Load from file - uses default weight_column='Change Weight'
+        result = scheduler.lexicographic_optimize([
+            MinimizeScheduleChanges(prev_schedule_file),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        c1_result = result[result['Course'] == 'C1'].iloc[0]
+        c2_result = result[result['Course'] == 'C2'].iloc[0]
+
+        # C1 should keep MWF (higher weight from file)
+        assert c1_result['Days'] == 'MWF'
+        # C2 should move to TTH (lower weight from file)
+        assert c2_result['Days'] == 'TTH'
+
+
 def run_all_tests():
     """Run all tests."""
     print('Running objectives tests...\n')
@@ -478,6 +624,15 @@ def run_all_tests():
 
     test_minimize_teaching_days_over_applies_to_all_when_no_instructors()
     print('✓ test_minimize_teaching_days_over_applies_to_all_when_no_instructors passed')
+
+    test_minimize_schedule_changes_keeps_previous_assignments()
+    print('✓ test_minimize_schedule_changes_keeps_previous_assignments passed')
+
+    test_minimize_schedule_changes_with_weights()
+    print('✓ test_minimize_schedule_changes_with_weights passed')
+
+    test_minimize_schedule_changes_from_file_with_weight_column()
+    print('✓ test_minimize_schedule_changes_from_file_with_weight_column passed')
 
     print('\n' + '='*50)
     print('All objectives tests passed!')

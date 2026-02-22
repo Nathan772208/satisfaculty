@@ -613,6 +613,137 @@ class TargetFill(ObjectiveBase):
         return lpSum(terms)
 
 
+class MinimizeScheduleChanges(ObjectiveBase):
+    """
+    Minimize changes from a previous schedule.
+
+    Penalizes assignments that differ from a reference schedule, allowing
+    incremental adjustments while keeping most courses in their original
+    time slots and rooms. Supports per-course weights to prioritize keeping
+    certain courses unchanged.
+    """
+
+    def __init__(
+        self,
+        previous_schedule,
+        weights: Optional[dict[str, float]] = None,
+        weight_column: str = 'Change Weight',
+        tolerance: float = 0.0
+    ):
+        """
+        Args:
+            previous_schedule: Either a path to a CSV file or a DataFrame with columns
+                              ['Course', 'Room', 'Days', 'Start'] or ['Course', 'Room', 'Slot']
+                              for the reference schedule.
+            weights: Optional dict mapping course names to weights (default 1.0).
+                    Higher weights make it more important to keep that course unchanged.
+                    Example: {'MATH-101': 5.0, 'PHYS-201': 2.0}
+            weight_column: Column name in the schedule file/DataFrame containing
+                          per-course weights. Default is 'Change Weight'. If both weights
+                          dict and weight_column are provided, the dict takes precedence.
+            tolerance: Fractional tolerance for lexicographic constraint.
+        """
+        import pandas as pd
+
+        # Load from file if string path provided
+        if isinstance(previous_schedule, str):
+            previous_schedule = pd.read_csv(previous_schedule)
+        elif not isinstance(previous_schedule, pd.DataFrame):
+            raise TypeError("previous_schedule must be a file path or pandas DataFrame")
+
+        required_cols = {'Course'}
+        if not required_cols.issubset(previous_schedule.columns):
+            raise ValueError(f"previous_schedule must have columns: {required_cols}")
+
+        self.previous_schedule = previous_schedule
+        self.weight_column = weight_column
+
+        # Build weights dict: start with column values, then override with explicit weights
+        self.weights = {}
+        if weight_column and weight_column in previous_schedule.columns:
+            for _, row in previous_schedule.iterrows():
+                if pd.notna(row[weight_column]):
+                    self.weights[row['Course']] = float(row[weight_column])
+
+        # Explicit weights dict overrides column values
+        if weights:
+            self.weights.update(weights)
+
+        self._previous_assignments = {}  # Will store (course, room, time_slot) from previous schedule
+
+        super().__init__(
+            name="Minimize schedule changes",
+            sense='minimize',
+            tolerance=tolerance
+        )
+
+    def _build_previous_assignments(self, scheduler):
+        """Extract (course, room, time_slot) assignments from previous schedule."""
+        # Build mapping from (Days, Start) to time slot
+        day_start_to_slot = {}
+        for slot in scheduler.time_slots:
+            slot_info = scheduler.time_slots_df[scheduler.time_slots_df['Slot'] == slot].iloc[0]
+            key = (slot_info['Days'], slot_info['Start'])
+            day_start_to_slot[key] = slot
+
+        # Extract previous assignments
+        for _, row in self.previous_schedule.iterrows():
+            course = row['Course']
+
+            # Skip courses not in current schedule
+            if course not in scheduler.courses:
+                continue
+
+            # Get room and time slot from previous schedule
+            if 'Room' in row:
+                room = row['Room']
+            else:
+                continue  # Can't match without room info
+
+            # Get time slot - support both explicit Slot column and Days/Start
+            if 'Slot' in row and pd.notna(row['Slot']):
+                time_slot = row['Slot']
+            elif 'Days' in row and 'Start' in row:
+                key = (row['Days'], row['Start'])
+                time_slot = day_start_to_slot.get(key)
+            else:
+                continue  # Can't determine time slot
+
+            # Verify this is a valid assignment key
+            if (course, room, time_slot) in scheduler.keys:
+                weight = self.weights.get(course, 1.0)
+                self._previous_assignments[(course, room, time_slot)] = weight
+
+    def evaluate(self, scheduler):
+        if not self._previous_assignments:
+            self._build_previous_assignments(scheduler)
+
+        # Penalize assignments that differ from previous schedule
+        # Award 0 penalty for keeping the same assignment, weight penalty for changing
+        terms = []
+        for course in scheduler.courses:
+            # Find the previous assignment for this course (if any)
+            previous_key = None
+            weight = self.weights.get(course, 1.0)
+
+            for key in self._previous_assignments:
+                if key[0] == course:
+                    previous_key = key
+                    weight = self._previous_assignments[key]
+                    break
+
+            if previous_key:
+                # Penalize all assignments except the previous one
+                for k in scheduler.keys:
+                    if k[0] == course and k != previous_key:
+                        terms.append(weight * scheduler.x[k])
+            # If no previous assignment, no penalty (new course)
+
+        if not terms:
+            return LpAffineExpression()
+        return lpSum(terms)
+
+
 class MinimizeTeachingDaysOver(ObjectiveBase):
     """
     Minimize teaching days over a threshold for specified instructors.

@@ -552,12 +552,6 @@ class InstructorScheduler:
 
         print(f"\n=== Lexicographic Optimization: {len(objectives)} objectives ===\n")
 
-        # Create solver
-        solver = PULP_CBC_CMD(
-            msg=1 if self.solver_verbose else 0,
-            timeLimit=self.objective_timeout
-        )
-
         # Track best schedule from completed objectives
         best_schedule = None
 
@@ -574,6 +568,12 @@ class InstructorScheduler:
                     self.prob.sense = LpMaximize
                     self.prob.setObjective(objective.evaluate(self))
 
+                # Use warmStart after first objective to provide feasible starting point
+                solver = PULP_CBC_CMD(
+                    msg=1 if self.solver_verbose else 0,
+                    timeLimit=self.objective_timeout,
+                    warmStart=(i > 0)
+                )
                 self.prob.solve(solver)
 
                 # Check solution status
@@ -599,6 +599,7 @@ class InstructorScheduler:
                     print(f"  ✓ Optimal value: {optimal_value:.2f}")
                 else:
                     print(f"  ⏱ Timed out at value: {optimal_value:.2f}")
+                    print(f"  ⚠ WARNING: Skipping constraint (timeout solution may not be feasible)")
 
                 # Extract and save intermediate schedule after each objective
                 self._extract_schedule()
@@ -606,7 +607,8 @@ class InstructorScheduler:
 
                 # Add constraint to lock this objective (with tolerance)
                 # Don't constrain the last objective
-                if i < len(objectives) - 1:
+                # Skip constraint if we timed out - CBC may report LP bound, not feasible solution
+                if i < len(objectives) - 1 and status == 'Optimal':
                     tolerance = objective.tolerance
                     if objective.sense == 'minimize':
                         bound = optimal_value * (1 + tolerance)

@@ -15,7 +15,9 @@ from satisfaculty import (
     NoRoomOverlap,
     MinimizeMinutesAfter,
     MaximizeBackToBackCourses,
+    MinimizeBackToBack,
     MinimizeClassesBefore,
+    MinimizeClassesAfter,
 )
 
 
@@ -158,6 +160,53 @@ def test_back_to_back_prefers_consecutive_slots():
         assert starts == ['09:05', '10:10']
 
 
+def test_minimize_back_to_back():
+    """Test that MinimizeBackToBack avoids consecutive slots for same instructor."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            # One instructor teaches two courses
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Smith,50,Lecture,Lecture\n'
+            ),
+            # Three consecutive time slots: 9:00, 10:00, 11:00
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'MWF-1000,MWF,10:00,10:50,Lecture\n'
+                'MWF-1100,MWF,11:00,11:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # First: MinimizeBackToBack to spread out courses
+        # Second: MinimizeClassesAfter("10:00") which would prefer early slots
+        #
+        # If MinimizeBackToBack works, courses should be in non-adjacent slots
+        # (e.g., 9:00 and 11:00) even though MinimizeClassesAfter prefers early times
+        # which would push both to 9:00 and 10:00 if unconstrained
+        result = scheduler.lexicographic_optimize([
+            MinimizeBackToBack(),
+            MinimizeClassesAfter("10:00"),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Extract the assigned start times
+        starts = sorted(result['Start'].tolist())
+        # Should be 9:00 and 11:00 (non-adjacent) rather than 9:00 and 10:00
+        assert starts == ['09:00', '11:00']
+
+
 def run_all_tests():
     """Run all tests."""
     print('Running objectives tests...\n')
@@ -173,6 +222,9 @@ def run_all_tests():
 
     test_back_to_back_prefers_consecutive_slots()
     print('✓ test_maximize_back_to_back_prefers_consecutive_slots passed')
+
+    test_minimize_back_to_back()
+    print('✓ test_minimize_back_to_back passed')
 
     print('\n' + '='*50)
     print('All objectives tests passed!')

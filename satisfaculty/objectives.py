@@ -449,3 +449,96 @@ class MaximizeBackToBackCourses(ObjectiveBase):
         if not self._built:
             self._build(scheduler)
         return self._objective_expr
+
+
+class MinimizeBackToBack(ObjectiveBase):
+    """
+    Minimize back-to-back teaching assignments for all instructors.
+
+    Counts pairs of consecutive course assignments for each instructor
+    and minimizes the total. This helps ensure instructors have breaks
+    between classes.
+    """
+
+    _instance_count = 0
+
+    def __init__(self, tolerance: float = 0.0):
+        """
+        Args:
+            tolerance: Fractional tolerance for lexicographic constraint.
+        """
+        self._built = False
+        self._objective_expr = None
+
+        MinimizeBackToBack._instance_count += 1
+        self._id = MinimizeBackToBack._instance_count
+
+        super().__init__(
+            name="Minimize back-to-back teaching",
+            sense='minimize',
+            tolerance=tolerance
+        )
+
+    def _build(self, scheduler):
+        # Build instructor -> courses mapping
+        instructor_courses = {}
+        for course in scheduler.courses:
+            for instructor in scheduler.course_instructors[course]:
+                instructor_courses.setdefault(instructor, []).append(course)
+
+        # Group time slots by slot type and days set (same as MaximizeBackToBackCourses)
+        groups = {}
+        for slot in scheduler.time_slots:
+            slot_type = scheduler.slot_type[slot]
+            days_key = tuple(sorted(scheduler.slot_days[slot]))
+            key = (slot_type, days_key)
+            groups.setdefault(key, []).append(slot)
+
+        # Build adjacency list of consecutive (slot1, slot2) pairs
+        adjacent_slots = []
+        for slots in groups.values():
+            slots_sorted = sorted(slots, key=lambda s: scheduler.slot_start_minutes[s])
+            for i in range(len(slots_sorted) - 1):
+                s1 = slots_sorted[i]
+                s2 = slots_sorted[i + 1]
+                adjacent_slots.append((s1, s2))
+
+        # Precompute course-slot assignment expressions (summing over rooms)
+        course_slot_expr = {}
+        for course in scheduler.courses:
+            for slot in scheduler.time_slots:
+                keys = filter_keys(scheduler.keys, course=course, time_slot=slot)
+                if keys:
+                    course_slot_expr[(course, slot)] = lpSum(scheduler.x[k] for k in keys)
+
+        # Create binary variables for back-to-back pairs per instructor
+        adjacency_vars = []
+        var_count = 0
+
+        for instructor, courses in instructor_courses.items():
+            # For each ordered pair of courses (including same course twice)
+            for course_a in courses:
+                for course_b in courses:
+                    for s1, s2 in adjacent_slots:
+                        # course_a in s1 AND course_b in s2
+                        if (course_a, s1) in course_slot_expr and (course_b, s2) in course_slot_expr:
+                            y = LpVariable(f"mbb_{self._id}_{var_count}", cat='Binary')
+                            scheduler.prob += (y <= course_slot_expr[(course_a, s1)], f"mbb_{self._id}_{var_count}_ub1")
+                            scheduler.prob += (y <= course_slot_expr[(course_b, s2)], f"mbb_{self._id}_{var_count}_ub2")
+                            scheduler.prob += (
+                                y >= course_slot_expr[(course_a, s1)] + course_slot_expr[(course_b, s2)] - 1,
+                                f"mbb_{self._id}_{var_count}_lb"
+                            )
+                            adjacency_vars.append(y)
+                            var_count += 1
+
+        if adjacency_vars:
+            self._objective_expr = lpSum(adjacency_vars)
+        else:
+            self._objective_expr = LpAffineExpression()
+        self._built = True
+
+    def evaluate(self, scheduler):
+        if not self._built:
+            self._build(scheduler)
+        return self._objective_expr

@@ -20,6 +20,7 @@ from satisfaculty import (
     MinimizeClassesAfter,
     MinimizePreferredRooms,
     TargetFill,
+    MinimizeTeachingDaysOver,
 )
 
 
@@ -244,6 +245,131 @@ def test_target_fill_prefers_correct_room_size():
         assert result.iloc[0]['Room'] == 'Room1'  # TargetFill should override
 
 
+def test_minimize_teaching_days_over_prefers_fewer_days():
+    """Test that MinimizeTeachingDaysOver prefers MWF (3 days) over MWF+TTH (5 days)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Setup: One instructor teaches 2 courses
+        # Slots: MWF-0900, MWF-1100, TTH-0900
+        # Expected: Both courses on MWF slots (3 days total) rather than split (5 days)
+        # Note: Need 20+ min gap between MWF slots due to 15-min buffer in NoRoomOverlap
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Smith,50,Lecture,Lecture\n'
+            ),
+            # MWF slots (3 days) with sufficient gap, and TTH slot (2 additional days if used)
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'MWF-1100,MWF,11:00,11:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # MinimizeTeachingDaysOver should prefer keeping both courses on MWF (3 days)
+        # rather than splitting across MWF and TTH (5 days)
+        result = scheduler.lexicographic_optimize([
+            MinimizeTeachingDaysOver(threshold=3, instructors=['Smith']),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Both courses should be assigned to MWF slots
+        days_list = result['Days'].tolist()
+        assert all(days == 'MWF' for days in days_list), f"Expected all MWF, got {days_list}"
+
+
+def test_minimize_teaching_days_over_filters_by_instructor():
+    """Test that MinimizeTeachingDaysOver only affects specified instructors."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Two instructors, but only Smith should be limited
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\nRoom2,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Smith,50,Lecture,Lecture\n'
+                'C3,Jones,50,Lecture,Lecture\n'
+                'C4,Jones,50,Lecture,Lecture\n'
+            ),
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'MWF-1100,MWF,11:00,11:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+                'TTH-1100,TTH,11:00,11:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        result = scheduler.lexicographic_optimize([
+            MinimizeTeachingDaysOver(threshold=3, instructors=['Smith']),
+        ])
+
+        assert result is not None
+        assert len(result) == 4
+
+        # Smith should have courses on same day pattern (MWF or TTH)
+        smith_courses = result[result['Instructor'] == 'Smith']
+        smith_days = smith_courses['Days'].unique()
+        assert len(smith_days) == 1, f"Smith should teach on one day pattern, got {list(smith_days)}"
+
+
+def test_minimize_teaching_days_over_applies_to_all_when_no_instructors():
+    """Test that MinimizeTeachingDaysOver applies to all instructors when instructors is None."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Note: Need 20+ min gap between MWF slots due to 15-min buffer in NoRoomOverlap
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\n',
+            courses_data=(
+                'Course,Instructor,Enrollment,Slot Type,Room Type\n'
+                'C1,Smith,50,Lecture,Lecture\n'
+                'C2,Smith,50,Lecture,Lecture\n'
+            ),
+            slots_data=(
+                'Slot,Days,Start,End,Slot Type\n'
+                'MWF-0900,MWF,09:00,09:50,Lecture\n'
+                'MWF-1100,MWF,11:00,11:50,Lecture\n'
+                'TTH-0900,TTH,09:00,09:50,Lecture\n'
+            ),
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # With instructors=None, should apply to all instructors
+        result = scheduler.lexicographic_optimize([
+            MinimizeTeachingDaysOver(threshold=3, instructors=None),
+        ])
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Both courses should be on MWF (3 days) rather than split
+        days_list = result['Days'].tolist()
+        assert all(days == 'MWF' for days in days_list), f"Expected all MWF, got {days_list}"
+
+
 def run_all_tests():
     """Run all tests."""
     print('Running objectives tests...\n')
@@ -265,6 +391,15 @@ def run_all_tests():
 
     test_target_fill_prefers_correct_room_size()
     print('✓ test_target_fill_prefers_correct_room_size passed')
+
+    test_minimize_teaching_days_over_prefers_fewer_days()
+    print('✓ test_minimize_teaching_days_over_prefers_fewer_days passed')
+
+    test_minimize_teaching_days_over_filters_by_instructor()
+    print('✓ test_minimize_teaching_days_over_filters_by_instructor passed')
+
+    test_minimize_teaching_days_over_applies_to_all_when_no_instructors()
+    print('✓ test_minimize_teaching_days_over_applies_to_all_when_no_instructors passed')
 
     print('\n' + '='*50)
     print('All objectives tests passed!')

@@ -18,6 +18,8 @@ from satisfaculty import (
     MinimizeBackToBack,
     MinimizeClassesBefore,
     MinimizeClassesAfter,
+    MinimizePreferredRooms,
+    TargetFill,
 )
 
 
@@ -207,6 +209,41 @@ def test_minimize_back_to_back():
         assert starts == ['09:00', '11:00']
 
 
+def test_target_fill_prefers_correct_room_size():
+    """Test that TargetFill prefers rooms matching the target fill ratio."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Room1: 100 capacity, Room2: 50 capacity
+        # Course enrollment: 75
+        # With 75% target fill:
+        #   Room1: target = 75, penalty = (75-75)^2 = 0 (perfect)
+        #   Room2: target = 37.5, penalty = (75-37.5)^2 = 1406.25 (bad)
+        #
+        # MinimizePreferredRooms(['Room1']) would prefer Room2 to avoid Room1,
+        # but TargetFill as the primary objective should override this.
+        rooms_file, courses_file, slots_file = create_test_files(
+            tmpdir,
+            rooms_data='Room,Capacity,Room Type\nRoom1,100,Lecture\nRoom2,50,Lecture\n',
+            courses_data='Course,Instructor,Enrollment,Slot Type,Room Type\nC1,Smith,75,Lecture,Lecture\n',
+            slots_data='Slot,Days,Start,End,Slot Type\nMWF-0900,MWF,09:00,09:50,Lecture\n',
+        )
+
+        scheduler = InstructorScheduler()
+        scheduler.load_rooms(rooms_file)
+        scheduler.load_courses(courses_file)
+        scheduler.load_time_slots(slots_file)
+        scheduler.add_constraints([AssignAllCourses(), NoRoomOverlap()])
+
+        # TargetFill wants Room1 (perfect fit), MinimizePreferredRooms wants Room2
+        # TargetFill should win since it's first in lexicographic order
+        result = scheduler.lexicographic_optimize([
+            TargetFill(0.75),
+            MinimizePreferredRooms(['Room1']),
+        ])
+
+        assert result is not None
+        assert result.iloc[0]['Room'] == 'Room1'  # TargetFill should override
+
+
 def run_all_tests():
     """Run all tests."""
     print('Running objectives tests...\n')
@@ -225,6 +262,9 @@ def run_all_tests():
 
     test_minimize_back_to_back()
     print('✓ test_minimize_back_to_back passed')
+
+    test_target_fill_prefers_correct_room_size()
+    print('✓ test_target_fill_prefers_correct_room_size passed')
 
     print('\n' + '='*50)
     print('All objectives tests passed!')

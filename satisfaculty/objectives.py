@@ -548,9 +548,11 @@ class TargetFill(ObjectiveBase):
     """
     Penalize room assignments based on how far they are from a target fill ratio.
 
-    For each assignment, computes the squared difference between course enrollment
-    and (target_fill_ratio * room_capacity). This encourages placing courses in
-    rooms where they'll fill to approximately the target percentage.
+    For each assignment, computes the squared difference between the actual fill
+    ratio (enrollment / capacity) and the target fill ratio. Using fractional
+    units ensures that large and small rooms have equal weight in the objective.
+    This encourages placing courses in rooms where they'll fill to approximately
+    the target percentage.
     """
 
     def __init__(self, target_fill_ratio: float = 0.75, tolerance: float = 0.0):
@@ -573,10 +575,13 @@ class TargetFill(ObjectiveBase):
         for course, room, time_slot in scheduler.keys:
             enrollment = scheduler.enrollments[course]
             capacity = scheduler.capacities[room]
-            target_enrollment = self.target_fill_ratio * capacity
 
-            # Squared difference penalty
-            penalty = (enrollment - target_enrollment) ** 2
+            # Calculate actual fill ratio and target fill ratio
+            actual_fill = enrollment / capacity
+
+            # Squared difference penalty (in fractional units)
+            # This ensures large and small rooms have equal weight
+            penalty = (actual_fill - self.target_fill_ratio) ** 2
 
             terms.append(penalty * scheduler.x[(course, room, time_slot)])
 

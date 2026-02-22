@@ -213,6 +213,20 @@ class SameTimeSlot(ConstraintBase):
         if len(self.courses) < 2:
             return 0
 
+        # Validate that all courses have the same slot type
+        slot_types = set()
+        for course in self.courses:
+            if course not in scheduler.course_slot_type:
+                raise ValueError(f"Course '{course}' not found in scheduler")
+            slot_types.add(scheduler.course_slot_type[course])
+
+        if len(slot_types) > 1:
+            course_slot_info = [f"{c} ({scheduler.course_slot_type[c]})" for c in self.courses]
+            raise ValueError(
+                f"SameTimeSlot constraint requires all courses to have the same slot type. "
+                f"Got courses with different slot types: {', '.join(course_slot_info)}"
+            )
+
         count = 0
         first_course = self.courses[0]
 

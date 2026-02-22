@@ -445,6 +445,51 @@ def test_same_time_slot_three_courses():
     assert course1_start == course2_start == course3_start, "All courses should be at the same time"
 
 
+def test_same_time_slot_different_slot_types_error():
+    """Test that SameTimeSlot raises an error when courses have different slot types."""
+    import tempfile
+
+    sched = scheduler.InstructorScheduler()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        time_slots_file = os.path.join(tmpdir, 'time_slots.csv')
+        with open(time_slots_file, 'w') as f:
+            f.write('Slot,Days,Start,End,Slot Type\n')
+            f.write('MWF-0900,MWF,09:00,09:50,Lecture\n')
+            f.write('T-0800,T,08:00,10:50,Lab\n')
+
+        courses_file = os.path.join(tmpdir, 'courses.csv')
+        with open(courses_file, 'w') as f:
+            f.write('Course,Instructor,Enrollment,Slot Type,Room Type\n')
+            f.write('Lecture1,Smith,80,Lecture,Lecture\n')
+            f.write('Lab1,Jones,30,Lab,Lab\n')
+
+        rooms_file = os.path.join(tmpdir, 'rooms.csv')
+        with open(rooms_file, 'w') as f:
+            f.write('Room,Capacity,Room Type\n')
+            f.write('Room1,100,Lecture\n')
+            f.write('Room2,50,Lab\n')
+
+        sched.load_time_slots(time_slots_file)
+        sched.load_courses(courses_file)
+        sched.load_rooms(rooms_file)
+
+    sched.add_constraints([
+        AssignAllCourses(),
+        NoRoomOverlap(),
+        SameTimeSlot(['Lecture1', 'Lab1'])  # Different slot types!
+    ])
+
+    # Should raise ValueError when trying to apply constraints
+    try:
+        sched.lexicographic_optimize([])
+        assert False, "Should have raised ValueError for mismatched slot types"
+    except ValueError as e:
+        assert "same slot type" in str(e).lower()
+        assert "Lecture1 (Lecture)" in str(e)
+        assert "Lab1 (Lab)" in str(e)
+
+
 def run_all_tests():
     test_time_overlap()
     test_instructor_overlap()
@@ -455,6 +500,7 @@ def run_all_tests():
     test_multiple_instructors_both_blocked()
     test_same_time_slot()
     test_same_time_slot_three_courses()
+    test_same_time_slot_different_slot_types_error()
 
     print('\n' + '='*50)
     print('All overlap tests passed!')

@@ -583,3 +583,170 @@ class TargetFill(ObjectiveBase):
         if not terms:
             return LpAffineExpression()
         return lpSum(terms)
+
+
+class MinimizeTeachingDaysOver(ObjectiveBase):
+    """
+    Minimize teaching days over a threshold for specified instructors.
+
+    Penalizes instructors who teach on more than threshold days per week.
+    Uses squared penalty: 4 days (excess=1) = penalty 1, 5 days (excess=2) = penalty 4.
+    """
+
+    _instance_count = 0
+
+    def __init__(
+        self,
+        threshold: int = 3,
+        instructors: Optional[List[str]] = None,
+        tolerance: float = 0.0
+    ):
+        """
+        Args:
+            threshold: Maximum ideal teaching days (default 3).
+            instructors: List of instructor names to apply to (e.g., ['Smith', 'Jones']).
+                        If None, applies to all instructors.
+            tolerance: Fractional tolerance for lexicographic constraint.
+        """
+        self.threshold = threshold
+        self.instructors = set(instructors) if instructors else None
+        self._built = False
+        self._objective_expr = None
+
+        MinimizeTeachingDaysOver._instance_count += 1
+        self._id = MinimizeTeachingDaysOver._instance_count
+
+        name_parts = [f"teaching days over {threshold}"]
+        if instructors:
+            name_parts.append(f"for {len(instructors)} instructor(s)")
+
+        super().__init__(
+            name=f"Minimize {' '.join(name_parts)}",
+            sense='minimize',
+            tolerance=tolerance
+        )
+
+    def _build(self, scheduler):
+        # Get all unique days from time slots
+        all_days = set()
+        for slot in scheduler.time_slots:
+            all_days.update(scheduler.slot_days[slot])
+        all_days = sorted(all_days)
+
+        # Filter instructors
+        if self.instructors is None:
+            target_instructors = scheduler.instructors
+        else:
+            target_instructors = [i for i in scheduler.instructors if i in self.instructors]
+
+        if not target_instructors:
+            self._objective_expr = LpAffineExpression()
+            self._built = True
+            return
+
+        # Build instructor -> courses mapping
+        instructor_courses = {}
+        for course in scheduler.courses:
+            for instructor in scheduler.course_instructors[course]:
+                if instructor in target_instructors:
+                    instructor_courses.setdefault(instructor, []).append(course)
+
+        penalty_vars = []
+        var_count = 0
+
+        for instructor in target_instructors:
+            courses = instructor_courses.get(instructor, [])
+            if not courses:
+                continue
+
+            # Create binary variable for each day: teaches_on_day[day] = 1 if instructor teaches any course on that day
+            teaches_on_day = {}
+            for day in all_days:
+                # Find all keys where this instructor's course is in a slot that includes this day
+                day_keys = []
+                for course in courses:
+                    for c, r, t in scheduler.keys:
+                        if c == course and day in scheduler.slot_days[t]:
+                            day_keys.append((c, r, t))
+
+                if not day_keys:
+                    continue
+
+                # Create binary variable: 1 if instructor teaches on this day
+                y = LpVariable(f"mtdo_{self._id}_{var_count}_day", cat='Binary')
+                var_count += 1
+
+                # y >= x for each assignment on this day (if any assignment, y=1)
+                for k in day_keys:
+                    scheduler.prob += (y >= scheduler.x[k], f"mtdo_{self._id}_{var_count}_lb_{k[0]}_{k[2]}")
+                    var_count += 1
+
+                # y <= sum of all assignments on this day (if no assignments, y=0)
+                scheduler.prob += (y <= lpSum(scheduler.x[k] for k in day_keys), f"mtdo_{self._id}_{var_count}_ub")
+                var_count += 1
+
+                teaches_on_day[day] = y
+
+            if not teaches_on_day:
+                continue
+
+            # Total teaching days for this instructor
+            total_days_expr = lpSum(teaches_on_day.values())
+
+            # Create excess variables for squared penalty
+            # excess_k = max(0, total_days - threshold - k + 1) for k = 1, 2, ...
+            # This creates a piecewise linear approximation of squared penalty
+            max_possible_excess = len(all_days) - self.threshold
+            if max_possible_excess <= 0:
+                continue
+
+            # For squared penalty, we use: sum of excess_k for k = 1 to max_excess
+            # where each excess_k = 1 if total_days >= threshold + k
+            # This gives: 1 excess day = 1, 2 excess days = 1+2=3... wait, that's triangular
+            # For actual squared: excess=1 -> 1, excess=2 -> 4
+            # Use: sum_{k=1}^{excess} (2k-1) = excess^2
+            # So we need variables that indicate if excess >= k, weighted by (2k-1)
+
+            for k in range(1, max_possible_excess + 1):
+                # excess_k = 1 if total_days >= threshold + k
+                e_k = LpVariable(f"mtdo_{self._id}_{var_count}_excess", cat='Binary')
+                var_count += 1
+
+                day_threshold = self.threshold + k
+                # e_k = 1 if total_days >= day_threshold
+                # Constraint: e_k <= (total_days - day_threshold + len(all_days)) / len(all_days)
+                # This ensures e_k can only be 1 if total_days >= day_threshold
+                # And: total_days >= day_threshold * e_k
+                scheduler.prob += (
+                    total_days_expr >= day_threshold * e_k,
+                    f"mtdo_{self._id}_{var_count}_excess_lb"
+                )
+                var_count += 1
+
+                # e_k <= 1 if total_days >= day_threshold (big-M style)
+                # total_days - day_threshold + M*(1-e_k) >= 0 where M = len(all_days)
+                # Rearranged: total_days >= day_threshold - M + M*e_k
+                # But we want: if total_days < day_threshold then e_k = 0
+                # total_days <= day_threshold - 1 + M*e_k
+                M = len(all_days)
+                scheduler.prob += (
+                    total_days_expr <= day_threshold - 1 + M * e_k,
+                    f"mtdo_{self._id}_{var_count}_excess_ub"
+                )
+                var_count += 1
+
+                # Weight for squared penalty: (2k - 1)
+                # sum of (2k-1) for k=1 to n = n^2
+                weight = 2 * k - 1
+                penalty_vars.append(weight * e_k)
+
+        if penalty_vars:
+            self._objective_expr = lpSum(penalty_vars)
+        else:
+            self._objective_expr = LpAffineExpression()
+        self._built = True
+
+    def evaluate(self, scheduler):
+        if not self._built:
+            self._build(scheduler)
+        return self._objective_expr

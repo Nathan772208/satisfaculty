@@ -667,70 +667,29 @@ class MinimizeScheduleChanges(ObjectiveBase):
         if weights:
             self.weights.update(weights)
 
-        self._previous_assignments = {}  # Will store (course, room, time_slot) from previous schedule
-
         super().__init__(
             name="Minimize schedule changes",
             sense='minimize',
             tolerance=tolerance
         )
 
-    def _build_previous_assignments(self, scheduler):
-        """Extract (course, room, time_slot) assignments from previous schedule."""
-        for _, row in self.previous_schedule.iterrows():
-            course = row['Course']
-
-            # Skip courses not in current schedule
-            if course not in scheduler.courses:
-                continue
-
-            # Get room and time slot from previous schedule
-            if 'Room' in row:
-                room = row['Room']
-            else:
-                continue  # Can't match without room info
-
-            # Get time slot from Slot column (required)
-            if 'Slot' not in self.previous_schedule.columns:
-                raise ValueError("previous_schedule must have a 'Slot' column")
-            if pd.isna(row['Slot']):
-                raise ValueError(f"Course {course} has missing Slot value")
-            time_slot = row['Slot']
-            if time_slot not in scheduler.time_slots:
-                raise ValueError(f"Slot '{time_slot}' for course {course} does not exist in time_slots")
-
-            # Verify this is a valid assignment key
-            if (course, room, time_slot) in scheduler.keys:
-                weight = self.weights.get(course, 1.0)
-                self._previous_assignments[(course, room, time_slot)] = weight
 
     def evaluate(self, scheduler):
-        if not self._previous_assignments:
-            self._build_previous_assignments(scheduler)
+
+        previous_assignments = set()
+        for _, row in self.previous_schedule.iterrows():
+            key = (row['Course'], row['Room'], row['Slot'])
+            previous_assignments.add(key)
 
         # Penalize assignments that differ from previous schedule
         # Award 0 penalty for keeping the same assignment, weight penalty for changing
         terms = []
-        for course in scheduler.courses:
-            # Find the previous assignment for this course (if any)
-            previous_key = None
-            weight = self.weights.get(course, 1.0)
+        for key in scheduler.keys:
+            if key not in previous_assignments:
+                course = key[0]
+                weight = self.weights.get(course, 1.0)
+                terms.append(weight * scheduler.x[key])
 
-            for key in self._previous_assignments:
-                if key[0] == course:
-                    previous_key = key
-                    weight = self._previous_assignments[key]
-                    break
-
-            if previous_key:
-                # Penalize all assignments except the previous one
-                for k in scheduler.keys:
-                    if k[0] == course and k != previous_key:
-                        terms.append(weight * scheduler.x[k])
-            # If no previous assignment, no penalty (new course)
-
-        if not terms:
-            return LpAffineExpression()
         return lpSum(terms)
 
 

@@ -501,6 +501,7 @@ class InstructorScheduler:
                 schedule_data.append({
                     'Course': course,
                     'Room': room,
+                    'Slot': t,
                     'Days': slot_info['Days'],
                     'Start': slot_info['Start'],
                     'End': slot_info['End'],

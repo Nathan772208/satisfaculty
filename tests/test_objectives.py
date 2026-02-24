@@ -470,8 +470,8 @@ def test_minimize_schedule_changes_keeps_previous_assignments():
 
         # Create a previous schedule
         previous_schedule = pd.DataFrame([
-            {'Course': 'C1', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},
-            {'Course': 'C2', 'Room': 'Room2', 'Days': 'MWF', 'Start': '11:00'},
+            {'Course': 'C1', 'Room': 'Room1', 'Slot': 'MWF-0900'},
+            {'Course': 'C2', 'Room': 'Room2', 'Slot': 'MWF-1100'},
         ])
 
         # Optimize with MinimizeScheduleChanges
@@ -518,8 +518,8 @@ def test_minimize_schedule_changes_with_weights():
 
         # Previous schedule: both on MWF
         previous_schedule = pd.DataFrame([
-            {'Course': 'C1', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},
-            {'Course': 'C2', 'Room': 'Room1', 'Days': 'MWF', 'Start': '09:00'},  # Same slot (infeasible)
+            {'Course': 'C1', 'Room': 'Room1', 'Slot': 'MWF-0900'},
+            {'Course': 'C2', 'Room': 'Room1', 'Slot': 'MWF-0900'},  # Same slot (infeasible)
         ])
 
         # C1 has higher weight, so it should keep its assignment
@@ -561,9 +561,9 @@ def test_minimize_schedule_changes_from_file_with_weight_column():
         # Create previous schedule file with "Change Weight" column (default)
         prev_schedule_file = os.path.join(tmpdir, 'previous_schedule.csv')
         with open(prev_schedule_file, 'w') as f:
-            f.write('Course,Room,Days,Start,End,Instructor,Enrollment,Note,Change Weight\n')
-            f.write('C1,Room1,MWF,09:00,09:50,Smith,50,,10.0\n')
-            f.write('C2,Room1,MWF,09:00,09:50,Jones,50,,1.0\n')
+            f.write('Course,Room,Slot,Days,Start,End,Instructor,Enrollment,Note,Change Weight\n')
+            f.write('C1,Room1,MWF-0900,MWF,09:00,09:50,Smith,50,,10.0\n')
+            f.write('C2,Room1,MWF-0900,MWF,09:00,09:50,Jones,50,,1.0\n')
 
         scheduler = InstructorScheduler()
         scheduler.load_rooms(rooms_file)

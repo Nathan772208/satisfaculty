@@ -11,6 +11,7 @@ from pulp import lpSum, LpAffineExpression, LpVariable
 from .scheduler import filter_keys
 from .utils import time_to_minutes
 from typing import Optional, List
+import pandas as pd
 
 
 class MinimizeClassesBefore(ObjectiveBase):
@@ -633,8 +634,7 @@ class MinimizeScheduleChanges(ObjectiveBase):
         """
         Args:
             previous_schedule: Either a path to a CSV file or a DataFrame with columns
-                              ['Course', 'Room', 'Days', 'Start'] or ['Course', 'Room', 'Slot']
-                              for the reference schedule.
+                              ['Course', 'Room', 'Slot'] for the reference schedule.
             weights: Optional dict mapping course names to weights (default 1.0).
                     Higher weights make it more important to keep that course unchanged.
                     Example: {'MATH-101': 5.0, 'PHYS-201': 2.0}
@@ -643,8 +643,6 @@ class MinimizeScheduleChanges(ObjectiveBase):
                           dict and weight_column are provided, the dict takes precedence.
             tolerance: Fractional tolerance for lexicographic constraint.
         """
-        import pandas as pd
-
         # Load from file if string path provided
         if isinstance(previous_schedule, str):
             previous_schedule = pd.read_csv(previous_schedule)
@@ -679,14 +677,6 @@ class MinimizeScheduleChanges(ObjectiveBase):
 
     def _build_previous_assignments(self, scheduler):
         """Extract (course, room, time_slot) assignments from previous schedule."""
-        # Build mapping from (Days, Start) to time slot
-        day_start_to_slot = {}
-        for slot in scheduler.time_slots:
-            slot_info = scheduler.time_slots_df[scheduler.time_slots_df['Slot'] == slot].iloc[0]
-            key = (slot_info['Days'], slot_info['Start'])
-            day_start_to_slot[key] = slot
-
-        # Extract previous assignments
         for _, row in self.previous_schedule.iterrows():
             course = row['Course']
 
@@ -700,14 +690,14 @@ class MinimizeScheduleChanges(ObjectiveBase):
             else:
                 continue  # Can't match without room info
 
-            # Get time slot - support both explicit Slot column and Days/Start
-            if 'Slot' in row and pd.notna(row['Slot']):
-                time_slot = row['Slot']
-            elif 'Days' in row and 'Start' in row:
-                key = (row['Days'], row['Start'])
-                time_slot = day_start_to_slot.get(key)
-            else:
-                continue  # Can't determine time slot
+            # Get time slot from Slot column (required)
+            if 'Slot' not in self.previous_schedule.columns:
+                raise ValueError("previous_schedule must have a 'Slot' column")
+            if pd.isna(row['Slot']):
+                raise ValueError(f"Course {course} has missing Slot value")
+            time_slot = row['Slot']
+            if time_slot not in scheduler.time_slots:
+                raise ValueError(f"Slot '{time_slot}' for course {course} does not exist in time_slots")
 
             # Verify this is a valid assignment key
             if (course, room, time_slot) in scheduler.keys:

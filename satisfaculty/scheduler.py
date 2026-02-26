@@ -648,6 +648,35 @@ class InstructorScheduler:
         print("=== Optimization complete ===\n")
         return self.schedule
 
+    def print_objective_values(self, objectives: list) -> dict:
+        """
+        Print the current values of the given objectives based on the current solution.
+
+        Args:
+            objectives: List of objective instances to evaluate
+
+        Returns:
+            Dictionary mapping objective names to their current values
+        """
+        from pulp import value
+
+        results = {}
+        print("\nObjective Values:")
+        print("-" * 40)
+
+        for objective in objectives:
+            expr = objective.evaluate(self)
+            val = value(expr)
+            results[objective.name] = val
+
+            # Format sense indicator
+            sense_indicator = "(min)" if objective.sense == 'minimize' else "(max)"
+
+            print(f"{objective.name}: {val:.2f} {sense_indicator}")
+
+        print("-" * 40)
+        return results
+
     def display_schedule(self):
         """Display the optimized schedule."""
         if self.schedule is not None:

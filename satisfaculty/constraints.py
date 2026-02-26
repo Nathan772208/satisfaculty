@@ -257,6 +257,52 @@ class SameTimeSlot(ConstraintBase):
 
         return count
 
+class LimitRoomTimeSlots(ConstraintBase):
+    """Restricts rooms to only be used during specific time slots.
+
+    Reads from a column in the rooms CSV (default: 'Allowed Time Slots').
+    The column should contain semicolon-separated time slot names.
+    Rooms without a value in this column are unrestricted.
+
+    Example rooms.csv:
+        Room,Capacity,Room Type,Allowed Time Slots
+        BLDG 120,200,Lecture,MWF-0830; MWF-0935; TTH-0830
+        BLDG 111,80,Lecture,
+    """
+
+    def __init__(self, column: str = 'Allowed Time Slots'):
+        self.column = column
+        super().__init__(name=f"Limit room time slots ({column})")
+
+    def apply(self, scheduler) -> int:
+        df = scheduler.rooms_df
+        if self.column not in df.columns:
+            return 0
+
+        count = 0
+        for _, row in df.iterrows():
+            room = row['Room']
+            allowed_slots_str = row[self.column]
+
+            if pd.isna(allowed_slots_str) or str(allowed_slots_str).strip() == '':
+                continue
+
+            # Parse semicolon-separated list of allowed time slots
+            allowed_slots = {s.strip() for s in str(allowed_slots_str).split(';') if s.strip()}
+
+            if not allowed_slots:
+                continue
+
+            # Disable all keys for this room that are not in allowed slots
+            for k in filter_keys(scheduler.keys, room=room):
+                _, _, time_slot = k
+                if time_slot not in allowed_slots:
+                    scheduler.x[k].upBound = 0
+                    count += 1
+
+        return count
+
+
 class InstructorTravelBuffer(ConstraintBase):
     """Enforce extra travel time between two room groups for the same instructor."""
     

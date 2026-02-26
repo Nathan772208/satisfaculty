@@ -668,7 +668,7 @@ class InstructorScheduler:
         else:
             print("No schedule available to save. Please run optimize_schedule() first.")
 
-    def visualize_schedule(self, output_file='schedule_visual.png'):
+    def visualize_schedule(self, output_file='schedule_visual.png', merge_rows=None, room_order=None):
         """
         Visualize the optimized schedule.
 
@@ -678,9 +678,18 @@ class InstructorScheduler:
 
         Args:
             output_file: Path to save the visualization PNG (default: 'schedule_visual.png')
+            merge_rows: Controls row merging behavior:
+                - None or False: No merging, one row per room (default)
+                - True: Merge all non-overlapping rooms
+                - List of room names: Only merge the specified rooms if they don't overlap
+                Room names are shown inside course blocks only for rooms that are
+                actually merged with another room.
+            room_order: Controls room display order (top to bottom on the plot):
+                - None: Sort by capacity (largest at top, default)
+                - List of room names: Display in the specified order (first = top)
         """
         if self.schedule is not None:
-            visualize_schedule(self.schedule, self.rooms_df, output_file)
+            visualize_schedule(self.schedule, self.rooms_df, output_file, merge_rows=merge_rows, room_order=room_order)
         else:
             print("No schedule available to visualize. Please run optimize_schedule() or lexicographic_optimize() first.")
 

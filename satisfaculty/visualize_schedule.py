@@ -13,8 +13,104 @@ import numpy as np
 from .utils import time_to_minutes, minutes_to_time, expand_days
 
 
-def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png'):
-    """Create a visual grid representation of the schedule."""
+def _intervals_overlap(intervals_a, intervals_b):
+    """Check if any interval in A overlaps with any interval in B."""
+    for (start_a, end_a) in intervals_a:
+        for (start_b, end_b) in intervals_b:
+            if start_a < end_b and start_b < end_a:
+                return True
+    return False
+
+
+def _compute_merged_rows(day_schedule, rooms, room_capacity, mergeable_rooms=None):
+    """
+    Compute merged row assignments using greedy bin-packing.
+
+    Args:
+        day_schedule: DataFrame of courses for a single day
+        rooms: List of room names sorted by capacity
+        room_capacity: Dict mapping room name to capacity
+        mergeable_rooms: Set of room names that can be merged, or None to merge all
+
+    Returns:
+        merged_rows: List of sets of room names sharing each row
+        room_to_row_idx: Dict mapping room name to row index
+    """
+    # Get intervals for each room on this day
+    room_intervals = {}
+    for _, course in day_schedule.iterrows():
+        room = course['Room']
+        if room not in room_intervals:
+            room_intervals[room] = []
+        room_intervals[room].append((course['StartMin'], course['EndMin']))
+
+    merged_rows = []  # List of (set of rooms, combined intervals)
+    room_to_row_idx = {}
+
+    # Process rooms in capacity order for consistent behavior
+    for room in rooms:
+        # Check if this room is allowed to be merged
+        can_merge = mergeable_rooms is None or room in mergeable_rooms
+
+        # Skip rooms with no courses IF they are mergeable
+        # Non-mergeable rooms always get their own row
+        if room not in room_intervals:
+            if can_merge:
+                continue  # Mergeable room with no courses - skip it
+            else:
+                # Non-mergeable room with no courses - still give it a row
+                room_to_row_idx[room] = len(merged_rows)
+                merged_rows.append(({room}, []))
+                continue
+
+        intervals = room_intervals[room]
+        placed = False
+
+        if can_merge:
+            # Try to fit into existing merged row (only with other mergeable rooms)
+            for row_idx, (row_rooms, row_intervals) in enumerate(merged_rows):
+                # Only merge if all rooms in this row are also mergeable
+                all_mergeable = mergeable_rooms is None or all(r in mergeable_rooms for r in row_rooms)
+                if all_mergeable and not _intervals_overlap(intervals, row_intervals):
+                    row_rooms.add(room)
+                    row_intervals.extend(intervals)
+                    room_to_row_idx[room] = row_idx
+                    placed = True
+                    break
+
+        if not placed:
+            room_to_row_idx[room] = len(merged_rows)
+            merged_rows.append(({room}, list(intervals)))
+
+    # Extract just the room sets
+    return [row_rooms for row_rooms, _ in merged_rows], room_to_row_idx
+
+
+def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png', merge_rows=None, room_order=None):
+    """
+    Create a visual grid representation of the schedule.
+
+    Args:
+        schedule_df: DataFrame with schedule data
+        rooms_df: DataFrame with room data
+        output_file: Path to save the visualization PNG
+        merge_rows: Controls row merging behavior:
+            - None or False: No merging, one row per room
+            - True: Merge all non-overlapping rooms
+            - List of room names: Only merge the specified rooms if they don't overlap
+        room_order: Controls room display order (top to bottom on the plot):
+            - None: Sort by capacity (largest at top, default)
+            - List of room names: Display in the specified order (first = top)
+    """
+
+    # Normalize merge_rows parameter
+    if merge_rows is False:
+        merge_rows = None
+    mergeable_rooms = None
+    if isinstance(merge_rows, list):
+        mergeable_rooms = set(merge_rows)
+    elif merge_rows is True:
+        mergeable_rooms = None  # None means all rooms can merge
 
     # Expand schedule to have one row per day
     schedule_expanded = []
@@ -34,8 +130,35 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png')
 
     # Get room info with capacity
     room_capacity = dict(zip(rooms_df['Room'], rooms_df['Capacity']))
-    rooms = sorted(schedule_exp_df['Room'].unique(),
-                   key=lambda r: room_capacity.get(r, 0), reverse=False)  # Ascending for matplotlib (displays bottom-to-top)
+    all_rooms = set(rooms_df['Room'])
+
+    # Determine room order
+    # Note: matplotlib plots y-axis bottom-to-top, so we reverse to get top-to-bottom display
+    scheduled_rooms = set(schedule_exp_df['Room'].unique())
+
+    # When merge_rows is a list, non-mergeable rooms should always be shown
+    # So we need to include them even if they have no scheduled classes
+    if mergeable_rooms is not None:
+        # Include: scheduled rooms + non-mergeable rooms from the full room list
+        rooms_to_show = scheduled_rooms | (all_rooms - mergeable_rooms)
+    else:
+        rooms_to_show = scheduled_rooms
+
+    if room_order is not None:
+        # Use specified order, include rooms even if not scheduled (if non-mergeable)
+        rooms = [r for r in room_order if r in rooms_to_show]
+        # Append any rooms not in room_order (sorted by capacity descending)
+        remaining = sorted(
+            [r for r in rooms_to_show if r not in room_order],
+            key=lambda r: room_capacity.get(r, 0),
+            reverse=True
+        )
+        rooms = rooms + remaining
+        # Reverse so first in list appears at top (highest y-index)
+        rooms = list(reversed(rooms))
+    else:
+        # Default: sort by capacity ascending so largest is at top
+        rooms = sorted(rooms_to_show, key=lambda r: room_capacity.get(r, 0))
 
     # Define day order
     day_order = ['M', 'T', 'W', 'TH', 'F']
@@ -84,17 +207,36 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png')
 
         day_schedule = schedule_exp_df[schedule_exp_df['Day'] == day]
 
+        # Determine row mapping based on merge_rows option
+        if merge_rows:
+            merged_row_sets, room_to_row_idx = _compute_merged_rows(
+                day_schedule, rooms, room_capacity, mergeable_rooms
+            )
+            num_rows = len(merged_row_sets)
+            if num_rows == 0:
+                num_rows = 1  # Avoid empty plot
+            # Build set of rooms that are actually in merged rows (more than one room)
+            rooms_in_merged_rows = set()
+            for row_rooms in merged_row_sets:
+                if len(row_rooms) > 1:
+                    rooms_in_merged_rows.update(row_rooms)
+        else:
+            room_to_row_idx = {room: idx for idx, room in enumerate(rooms)}
+            num_rows = len(rooms)
+            merged_row_sets = None
+            rooms_in_merged_rows = set()
+
         # Set up the plot
         ax.set_xlim(min_time, max_time)
-        ax.set_ylim(-0.5, len(rooms) - 0.5)
+        ax.set_ylim(-0.5, num_rows - 0.5)
 
         # Draw horizontal lines between rooms (behind boxes)
-        for i in range(len(rooms) + 1):
+        for i in range(num_rows + 1):
             ax.axhline(i - 0.5, color='gray', linewidth=0.5)
 
         # Plot courses
         for _, course in day_schedule.iterrows():
-            room_idx = rooms.index(course['Room'])
+            room_idx = room_to_row_idx[course['Room']]
             start = course['StartMin']
             duration = course['EndMin'] - course['StartMin']
 
@@ -107,19 +249,42 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png')
             # Add course text
             text_x = start + duration / 2
             text_y = room_idx
-            ax.text(text_x, text_y + 0.15, course['Course'],
-                   ha='center', va='center', fontsize=8, weight='bold')
-            ax.text(text_x, text_y - 0.15, f"({course['Instructor']}, {int(course['Enrollment'])})",
-                   ha='center', va='center', fontsize=7)
+
+            # Only show room name in box if this room is in a merged row
+            if course['Room'] in rooms_in_merged_rows:
+                # Three-line label: Course, Room, (Instructor, Enrollment)
+                ax.text(text_x, text_y + 0.22, course['Course'],
+                       ha='center', va='center', fontsize=7, weight='bold')
+                ax.text(text_x, text_y, course['Room'],
+                       ha='center', va='center', fontsize=6, style='italic')
+                ax.text(text_x, text_y - 0.22, f"({course['Instructor']}, {int(course['Enrollment'])})",
+                       ha='center', va='center', fontsize=6)
+            else:
+                # Original two-line label
+                ax.text(text_x, text_y + 0.15, course['Course'],
+                       ha='center', va='center', fontsize=8, weight='bold')
+                ax.text(text_x, text_y - 0.15, f"({course['Instructor']}, {int(course['Enrollment'])})",
+                       ha='center', va='center', fontsize=7)
 
         # Draw vertical hour lines (in front of boxes)
         for hour in range(min_time // 60, max_time // 60 + 1):
             ax.axvline(hour * 60, color='gray', linewidth=0.5, alpha=0.3)
 
         # Set room labels
-        room_labels = [f"{room} ({room_capacity.get(room, '?')})" for room in rooms]
-        ax.set_yticks(range(len(rooms)))
-        ax.set_yticklabels(room_labels)
+        if merge_rows and merged_row_sets:
+            row_labels = []
+            for row_rooms in merged_row_sets:
+                if len(row_rooms) == 1:
+                    room = list(row_rooms)[0]
+                    row_labels.append(f"{room} ({room_capacity.get(room, '?')})")
+                else:
+                    row_labels.append(f"Merged: {len(row_rooms)} rooms")
+            ax.set_yticks(range(num_rows))
+            ax.set_yticklabels(row_labels)
+        else:
+            room_labels = [f"{room} ({room_capacity.get(room, '?')})" for room in rooms]
+            ax.set_yticks(range(len(rooms)))
+            ax.set_yticklabels(room_labels)
 
         # Set time labels
         time_ticks = range(min_time, max_time + 1, 60)

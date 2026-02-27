@@ -86,7 +86,7 @@ def _compute_merged_rows(day_schedule, rooms, room_capacity, mergeable_rooms=Non
     return [row_rooms for row_rooms, _ in merged_rows], room_to_row_idx
 
 
-def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png', merge_rows=None, room_order=None):
+def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png', merge_rows=None, room_order=None, highlight_changes_from=None):
     """
     Create a visual grid representation of the schedule.
 
@@ -101,6 +101,11 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png',
         room_order: Controls room display order (top to bottom on the plot):
             - None: Sort by capacity (largest at top, default)
             - List of room names: Display in the specified order (first = top)
+        highlight_changes_from: Optional previous schedule to compare against:
+            - None: No highlighting
+            - str: Path to a CSV file with the previous schedule
+            - DataFrame: Previous schedule DataFrame
+            Courses that changed room or time slot will be highlighted with a red border.
     """
 
     # Normalize merge_rows parameter
@@ -111,6 +116,30 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png',
         mergeable_rooms = set(merge_rows)
     elif merge_rows is True:
         mergeable_rooms = None  # None means all rooms can merge
+
+    # Load previous schedule and build set of changed courses
+    changed_courses = set()
+    if highlight_changes_from is not None:
+        if isinstance(highlight_changes_from, str):
+            prev_df = pd.read_csv(highlight_changes_from)
+        else:
+            prev_df = highlight_changes_from
+
+        # Build lookup of previous assignments: course -> (room, slot)
+        prev_assignments = {}
+        for _, row in prev_df.iterrows():
+            prev_assignments[row['Course']] = (row['Room'], row['Slot'])
+
+        # Find courses that changed
+        for _, row in schedule_df.iterrows():
+            course = row['Course']
+            if course in prev_assignments:
+                prev_room, prev_slot = prev_assignments[course]
+                if row['Room'] != prev_room or row['Slot'] != prev_slot:
+                    changed_courses.add(course)
+            else:
+                # New course not in previous schedule
+                changed_courses.add(course)
 
     # Expand schedule to have one row per day
     schedule_expanded = []
@@ -240,10 +269,13 @@ def visualize_schedule(schedule_df, rooms_df, output_file='schedule_visual.png',
             start = course['StartMin']
             duration = course['EndMin'] - course['StartMin']
 
-            # Draw rectangle
+            # Draw rectangle (highlight changed courses with red border)
+            is_changed = course['Course'] in changed_courses
+            edge_color = 'red' if is_changed else 'black'
+            edge_width = 3 if is_changed else 1
             rect = Rectangle((start, room_idx - 0.4), duration, 0.8,
                             facecolor=course_colors[course['Course']],
-                            edgecolor='black', linewidth=1)
+                            edgecolor=edge_color, linewidth=edge_width)
             ax.add_patch(rect)
 
             # Add course text

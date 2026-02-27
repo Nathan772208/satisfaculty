@@ -702,6 +702,7 @@ class MinimizeScheduleChanges(ObjectiveBase):
         previous_schedule,
         weights: Optional[dict[str, float]] = None,
         weight_column: str = 'Change Weight',
+        time_only: bool = False,
         tolerance: float = 0.0
     ):
         """
@@ -714,6 +715,7 @@ class MinimizeScheduleChanges(ObjectiveBase):
             weight_column: Column name in the schedule file/DataFrame containing
                           per-course weights. Default is 'Change Weight'. If both weights
                           dict and weight_column are provided, the dict takes precedence.
+            time_only: If True, only penalize changes to the time slot, ignoring room changes.
             tolerance: Fractional tolerance for lexicographic constraint.
         """
         # Load from file if string path provided
@@ -728,6 +730,7 @@ class MinimizeScheduleChanges(ObjectiveBase):
 
         self.previous_schedule = previous_schedule
         self.weight_column = weight_column
+        self.time_only = time_only
 
         # Build weights dict: start with column values, then override with explicit weights
         self.weights = {}
@@ -740,28 +743,45 @@ class MinimizeScheduleChanges(ObjectiveBase):
         if weights:
             self.weights.update(weights)
 
+        name = "Minimize schedule changes (time only)" if time_only else "Minimize schedule changes"
         super().__init__(
-            name="Minimize schedule changes",
+            name=name,
             sense='minimize',
             tolerance=tolerance
         )
 
 
     def evaluate(self, scheduler):
+        if self.time_only:
+            # Build lookup: course -> slot
+            previous_slots = {}
+            for _, row in self.previous_schedule.iterrows():
+                previous_slots[row['Course']] = row['Slot']
 
-        previous_assignments = set()
-        for _, row in self.previous_schedule.iterrows():
-            key = (row['Course'], row['Room'], row['Slot'])
-            previous_assignments.add(key)
+            # Penalize assignments where the time slot differs
+            terms = []
+            for course, room, time_slot in scheduler.keys:
+                if course in previous_slots and time_slot != previous_slots[course]:
+                    weight = self.weights.get(course, 1.0)
+                    terms.append(weight * scheduler.x[(course, room, time_slot)])
+                elif course not in previous_slots:
+                    # New course not in previous schedule - penalize all assignments
+                    weight = self.weights.get(course, 1.0)
+                    terms.append(weight * scheduler.x[(course, room, time_slot)])
+        else:
+            previous_assignments = set()
+            for _, row in self.previous_schedule.iterrows():
+                key = (row['Course'], row['Room'], row['Slot'])
+                previous_assignments.add(key)
 
-        # Penalize assignments that differ from previous schedule
-        # Award 0 penalty for keeping the same assignment, weight penalty for changing
-        terms = []
-        for key in scheduler.keys:
-            if key not in previous_assignments:
-                course = key[0]
-                weight = self.weights.get(course, 1.0)
-                terms.append(weight * scheduler.x[key])
+            # Penalize assignments that differ from previous schedule
+            # Award 0 penalty for keeping the same assignment, weight penalty for changing
+            terms = []
+            for key in scheduler.keys:
+                if key not in previous_assignments:
+                    course = key[0]
+                    weight = self.weights.get(course, 1.0)
+                    terms.append(weight * scheduler.x[key])
 
         return lpSum(terms)
 

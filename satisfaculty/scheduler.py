@@ -694,7 +694,7 @@ class InstructorScheduler:
             with open(filename, 'w') as f:
                 f.write("Objective,Value,Sense\n")
                 for name, val, sense in rows:
-                    f.write(f"{name},{val},{sense}\n")
+                    f.write(f'"{name}",{val},{sense}\n')
             print(f"Objective values saved to {filename}")
 
         return results
@@ -719,7 +719,7 @@ class InstructorScheduler:
         else:
             print("No schedule available to save. Please run optimize_schedule() first.")
 
-    def visualize_schedule(self, output_file='schedule_visual.png', merge_rows=None, room_order=None):
+    def visualize_schedule(self, output_file='schedule_visual.png', merge_rows=None, room_order=None, highlight_changes_from=None):
         """
         Visualize the optimized schedule.
 
@@ -738,9 +738,14 @@ class InstructorScheduler:
             room_order: Controls room display order (top to bottom on the plot):
                 - None: Sort by capacity (largest at top, default)
                 - List of room names: Display in the specified order (first = top)
+            highlight_changes_from: Optional previous schedule to compare against:
+                - None: No highlighting
+                - str: Path to a CSV file with the previous schedule
+                - DataFrame: Previous schedule DataFrame
+                Courses that changed room or time slot will be highlighted with a red border.
         """
         if self.schedule is not None:
-            visualize_schedule(self.schedule, self.rooms_df, output_file, merge_rows=merge_rows, room_order=room_order)
+            visualize_schedule(self.schedule, self.rooms_df, output_file, merge_rows=merge_rows, room_order=room_order, highlight_changes_from=highlight_changes_from)
         else:
             print("No schedule available to visualize. Please run optimize_schedule() or lexicographic_optimize() first.")
 

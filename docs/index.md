@@ -1,5 +1,7 @@
 # satisfaculty
 
+**[View on GitHub](https://github.com/zsunberg/satisfaculty)**
+
 Are you a faculty member or administrator trying to create a schedule that obeys tricky constraints and satisfies many objectives? Satisfaculty can help!
 
 `satisfaculty` is a python package that uses lexicographic mixed-integer linear programming to create academic schedules like the one below:

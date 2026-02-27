@@ -206,6 +206,79 @@ class MinimizeMinutesAfter(ObjectiveBase):
         return lpSum(terms)
 
 
+class MaximizeClassesInSlots(ObjectiveBase):
+    """
+    Maximize classes scheduled in a specific set of time slots.
+
+    Useful for maximizing classes in particular time slots,
+    such as prime-time slots or preferred scheduling windows.
+    """
+
+    def __init__(
+        self,
+        slots: List[str],
+        instructor: Optional[str] = None,
+        courses: Optional[List[str]] = None,
+        course_type: Optional[str] = None,
+        tolerance: float = 0.0,
+        name: Optional[str] = None
+    ):
+        """
+        Args:
+            slots: List of time slot names to count (e.g., ["MWF 9:00", "MWF 10:00"])
+            instructor: If specified, only count this instructor's classes
+            courses: If specified, only count these courses
+            course_type: If specified, only count this type ('Lecture' or 'Lab')
+            tolerance: Fractional tolerance for lexicographic constraint
+            name: Optional custom name for the objective
+        """
+        self.slots = set(slots)
+        self.instructor = instructor
+        self.courses = set(courses) if courses else None
+        self.course_type = course_type
+
+        if name is None:
+            name_parts = [f"classes in {len(slots)} slot(s)"]
+            if instructor:
+                name_parts.append(f"for {instructor}")
+            if courses:
+                name_parts.append(f"for {len(courses)} courses")
+            if course_type:
+                name_parts.append(f"({course_type})")
+            name = f"Maximize {' '.join(name_parts)}"
+
+        super().__init__(
+            name=name,
+            sense='maximize',
+            tolerance=tolerance
+        )
+
+    def evaluate(self, scheduler):
+        def matches_criteria(course, room, time_slot):
+            # Check slot constraint
+            if time_slot not in self.slots:
+                return False
+
+            # Check instructor constraint
+            if self.instructor:
+                if self.instructor not in scheduler.course_instructors[course]:
+                    return False
+
+            # Check course constraint
+            if self.courses and course not in self.courses:
+                return False
+
+            # Check course type constraint
+            if self.course_type:
+                if scheduler.course_slot_type[course] != self.course_type:
+                    return False
+
+            return True
+
+        filtered = filter_keys(scheduler.keys, predicate=matches_criteria)
+        return lpSum(scheduler.x[k] for k in filtered)
+
+
 class MaximizePreferredRooms(ObjectiveBase):
     """
     Maximize use of preferred rooms.

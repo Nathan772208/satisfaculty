@@ -648,12 +648,13 @@ class InstructorScheduler:
         print("=== Optimization complete ===\n")
         return self.schedule
 
-    def print_objective_values(self, objectives: list) -> dict:
+    def print_objective_values(self, objectives: list, filename: str = None) -> dict:
         """
         Print the current values of the given objectives based on the current solution.
 
         Args:
             objectives: List of objective instances to evaluate
+            filename: Optional CSV filename to save the results
 
         Returns:
             Dictionary mapping objective names to their current values
@@ -661,20 +662,41 @@ class InstructorScheduler:
         from pulp import value
 
         results = {}
-        print("\nObjective Values:")
-        print("-" * 40)
 
+        # First pass: compute values and find max name length
+        rows = []
         for objective in objectives:
             expr = objective.evaluate(self)
             val = value(expr)
             results[objective.name] = val
+            sense = "min" if objective.sense == 'minimize' else "max"
+            rows.append((objective.name, val, sense))
 
-            # Format sense indicator
-            sense_indicator = "(min)" if objective.sense == 'minimize' else "(max)"
+        max_name_len = max(len(row[0]) for row in rows) if rows else 20
 
-            print(f"{objective.name}: {val:.2f} {sense_indicator}")
+        # Print table
+        print("\nObjective Values:")
+        print("-" * (max_name_len + 18))
+        print("%-*s  %10s  %s" % (max_name_len, "Objective", "Value", "Sense"))
+        print("-" * (max_name_len + 18))
 
-        print("-" * 40)
+        for name, val, sense in rows:
+            print("%-*s  %10.2f  (%s)" % (max_name_len, name, val, sense))
+
+        print("-" * (max_name_len + 18))
+
+        # Save to CSV if filename provided
+        if filename:
+            import os
+            dirname = os.path.dirname(filename)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+            with open(filename, 'w') as f:
+                f.write("Objective,Value,Sense\n")
+                for name, val, sense in rows:
+                    f.write(f"{name},{val},{sense}\n")
+            print(f"Objective values saved to {filename}")
+
         return results
 
     def display_schedule(self):

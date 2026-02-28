@@ -14,6 +14,17 @@ from typing import Optional, List
 import pandas as pd
 
 
+def _format_list_summary(items: list) -> str:
+    """Format a list of items as 'item1 and N others' or 'item1, item2' for short lists."""
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return f"{items[0]} and {len(items) - 1} others"
+
+
 class MinimizeClassesBefore(ObjectiveBase):
     """
     Minimize classes scheduled before a given time.
@@ -124,7 +135,7 @@ class MinimizeClassesAfter(ObjectiveBase):
         if instructor:
             name_parts.append(f"for {instructor}")
         if courses:
-            name_parts.append(f"for {len(courses)} courses")
+            name_parts.append(f"for {_format_list_summary(list(courses))}")
         if course_type:
             name_parts.append(f"({course_type})")
         if days:
@@ -242,7 +253,7 @@ class MaximizeClassesInSlots(ObjectiveBase):
             if instructor:
                 name_parts.append(f"for {instructor}")
             if courses:
-                name_parts.append(f"for {len(courses)} courses")
+                name_parts.append(f"for {_format_list_summary(list(courses))}")
             if course_type:
                 name_parts.append(f"({course_type})")
             name = f"Maximize {' '.join(name_parts)}"
@@ -312,7 +323,7 @@ class MaximizePreferredRooms(ObjectiveBase):
         if instructor:
             name_parts.append(f"for {instructor}")
         if courses:
-            name_parts.append(f"for {len(courses)} courses")
+            name_parts.append(f"for {_format_list_summary(list(courses))}")
         if course_type:
             name_parts.append(f"({course_type})")
 
@@ -436,7 +447,7 @@ class MaximizeBackToBackCourses(ObjectiveBase):
         self._id = MaximizeBackToBackCourses._instance_count
 
         super().__init__(
-            name=f"Maximize back-to-back for {len(self.courses)} course(s)",
+            name=f"Maximize back-to-back for {_format_list_summary(self.courses)}",
             sense='maximize',
             tolerance=tolerance
         )
@@ -819,7 +830,7 @@ class MinimizeTeachingDaysOver(ObjectiveBase):
 
         name_parts = [f"teaching days over {threshold}"]
         if instructors:
-            name_parts.append(f"for {len(instructors)} instructor(s)")
+            name_parts.append(f"for {_format_list_summary(list(instructors))}")
 
         super().__init__(
             name=f"Minimize {' '.join(name_parts)}",

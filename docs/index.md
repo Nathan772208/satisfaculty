@@ -56,4 +56,5 @@ Example data files and a script are available in the [`example/`](https://github
 
 formulation
 objectives_guide
+debugging
 ```

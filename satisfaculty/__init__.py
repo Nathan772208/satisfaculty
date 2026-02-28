@@ -26,6 +26,7 @@ from .constraints import (
     ForceTimeSlots,
     LimitRoomTimeSlots,
     InstructorTravelBuffer,
+    ConstrainObjective,
 )
 from .visualize_schedule import visualize_schedule
 
@@ -55,6 +56,7 @@ __all__ = [
     "ForceTimeSlots",
     "LimitRoomTimeSlots",
     "InstructorTravelBuffer",
+    "ConstrainObjective",
     # Utilities
     "visualize_schedule",
 ]

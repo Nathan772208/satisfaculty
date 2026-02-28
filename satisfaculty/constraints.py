@@ -392,3 +392,70 @@ class InstructorTravelBuffer(ConstraintBase):
                     count += 1
         return count
 
+
+class ConstrainObjective(ConstraintBase):
+    """Convert any objective into a hard constraint by bounding its value.
+
+    This constraint takes an objective and bounds its expression to a given value.
+    The comparison operator defaults based on the objective's sense:
+    - minimize objectives default to '<=' (at most)
+    - maximize objectives default to '>=' (at least)
+
+    Example:
+        # No classes after 5pm for Smith (minimize objective, defaults to <=)
+        ConstrainObjective(MinimizeClassesAfter("17:00", instructor="Smith"), 0)
+
+        # At least 3 classes in preferred rooms (maximize objective, defaults to >=)
+        ConstrainObjective(MaximizePreferredRooms(["Room A", "Room B"]), 3)
+
+        # Exactly 2 classes before 9am (explicit comparison)
+        ConstrainObjective(MinimizeClassesBefore("9:00"), 2, comparison='==')
+    """
+
+    _instance_count = 0
+
+    def __init__(self, objective, value, comparison=None):
+        """
+        Args:
+            objective: An ObjectiveBase instance
+            value: The bound value for the objective
+            comparison: '<=' (at most), '>=' (at least), or '==' (exact)
+                        Defaults based on sense: minimize -> '<=', maximize -> '>='
+        """
+        self.objective = objective
+        self.value = value
+
+        if comparison is None:
+            self.comparison = '<=' if objective.sense == 'minimize' else '>='
+        else:
+            if comparison not in ('<=', '>=', '=='):
+                raise ValueError(f"comparison must be '<=', '>=', or '==', got '{comparison}'")
+            self.comparison = comparison
+
+        ConstrainObjective._instance_count += 1
+        self._id = ConstrainObjective._instance_count
+
+        comparison_desc = {'<=': 'at most', '>=': 'at least', '==': 'exactly'}[self.comparison]
+        super().__init__(name=f"Constrain {objective.name} to {comparison_desc} {value}")
+
+    def apply(self, scheduler) -> int:
+        expr = self.objective.evaluate(scheduler)
+
+        if self.comparison == '<=':
+            scheduler.prob += (
+                expr <= self.value,
+                f"constrain_objective_{self._id}"
+            )
+        elif self.comparison == '>=':
+            scheduler.prob += (
+                expr >= self.value,
+                f"constrain_objective_{self._id}"
+            )
+        else:  # '=='
+            scheduler.prob += (
+                expr == self.value,
+                f"constrain_objective_{self._id}"
+            )
+
+        return 1
+

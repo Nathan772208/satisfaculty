@@ -215,7 +215,105 @@ class MinimizeMinutesAfter(ObjectiveBase):
         if not terms:
             return LpAffineExpression()
         return lpSum(terms)
+    
 
+class MinimizeEarlyAndLateSameDay(ObjectiveBase):
+    """
+    Minimize instructor days that have both and early and late class
+
+    "Early" means slot start < early_time.
+    "Late" means slot end > late_time.
+
+    This is useful for instructors who prefer not to have long gaps
+    between morning and afternoon classes on the same day.
+    """
+
+    def __init__(
+        self,
+        early_time: str = '9:00',
+        late_time: str = '16:30',
+        instructor: Optional[str] = None,
+        tolerance: float = 0.0
+    ):
+        """
+        Args:
+            early_time: Time in HH:MM format defining "early" (before this time)
+            late_time: Time in HH:MM format defining "late" (after this time)
+            instructor: If specified, only apply to this instructor
+            tolerance: Fractional tolerance for lexicographic constraint
+        """
+        self.early_minutes = time_to_minutes(early_time)
+        self.late_minutes = time_to_minutes(late_time)
+        self.instructor = instructor
+
+        self._cached_scheduler_id = None
+        self._cached_expression = None
+
+        name = f"Minimize early/late same day assignments ({early_time}, {late_time})"
+        if instructor:
+            name += f" for {instructor}"
+
+        super().__init__(
+            name = name,
+            sense = 'minimize',
+            tolerance = tolerance
+        )
+
+    def evaluate(self, scheduler):
+        # lexicographic_optimize evaluates each objective multiple times;
+        # cache per scheduler instance so helper constraints are added once.
+        scheduler_id = id(scheduler)
+        if self._cached_scheduler_id == scheduler_id and self._cached_expression is not None:
+            return self._cached_expression
+            
+        if self.instructor:
+            instructors = [self.instructor]
+        else:
+            instructors = scheduler.instructors
+
+        combo_vars = []
+        days = sorted({d for slot_days in scheduler.slot_days.values() for d in slot_days})
+
+        instructor_courses = {
+            instructor: set(
+                scheduler.courses_df[scheduler.courses_df['Instructor'] == instructor]['Course'].values
+            )
+            for instructor in instructors
+        }
+
+        for instructor in instructors:
+            courses_for_instructor = instructor_courses.get(instructor, set())
+            instructor_keys = [k for k in scheduler.keys if k[0] in courses_for_instructor]
+            if not instructor_keys:
+                continue
+
+            safe_instructor = ''.join(ch if ch.isalnum() else '_' for ch in instructor)
+            for day in days:
+                early_keys = [
+                    k for k in instructor_keys
+                    if day in scheduler.slot_days[k[2]] and scheduler.slot_start_minutes[k[2]] < self.early_minutes
+                ]
+                late_keys = [
+                    k for k in instructor_keys
+                    if day in scheduler.slot_days[k[2]] and scheduler.slot_end_minutes[k[2]] > self.late_minutes
+                ]
+
+                if not early_keys or not late_keys:
+                    continue
+
+                combo = LpVariable(f"early_late_same_day_{safe_instructor}_{day}", cat='Binary')
+                early_sum = lpSum(scheduler.x[k] for k in early_keys)
+                late_sum = lpSum(scheduler.x[k] for k in late_keys)
+
+                scheduler.prob += combo <= early_sum
+                scheduler.prob += combo <= late_sum
+                scheduler.prob += combo >= early_sum + late_sum - 1
+                combo_vars.append(combo)
+            
+        self._cached_scheduler_id = scheduler_id
+        self._cached_expression = lpSum(combo_vars)
+        return self._cached_expression
+            
 
 class MaximizeClassesInSlots(ObjectiveBase):
     """
